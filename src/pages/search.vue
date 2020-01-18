@@ -28,7 +28,8 @@
       மொத்த சொற்கள்: {{resultWords.length}} <br/><br/>
     <span v-if="resultWords.length <= 10000">
       <q-chip outline color="grey-8" text-color="white" v-for="word in resultWords" :key="word" class="q-ma-xs">
-        {{word}}
+        {{word}} <a :href="'https://ta.wiktionary.org/wiki/' + word" class="hrefword" target="_blank"><q-icon class="q-ml-xs" name="menu_book" color="grey-8" size="20px"/></a>
+
       </q-chip>
     </span>
     <span v-else class="tamil">
@@ -51,6 +52,7 @@ export default {
     search: function () {
       this.showProgress = true
       this.resultWords = ''
+      this.inputWord = this.inputWord.trim()
       var urlPars = 'source=' + this.inputWord + '&todaiSel=' + this.ornamentSel.value + '&letterCountSel=' + this.letterCountSel.value + '&matraCountSel=' + this.matraCountSel.value + '&vaypatuSel=' + this.patternSel + '&talaiSel=' + this.linkageSel
 
       if (this.matraCountSel.value === 'other') {
@@ -90,8 +92,8 @@ export default {
         value: 'etukai'
       },
       letterCountSel: {
-        label: 'அனைத்தும்',
-        value: 'all'
+        label: 'சம அளவு',
+        value: 'src'
       },
       matraCountSel: {
         label: 'அனைத்தும்',
@@ -181,4 +183,12 @@ export default {
 </script>
 
 <style scoped>
+.hrefword:link {
+  text-decoration: none;
+}
+
+.hrefword:visited {
+  text-decoration: none;
+}
+
 </style>

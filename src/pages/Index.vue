@@ -39,8 +39,10 @@
       class="tamil q-ma-md"
       @input="processText"
     />
-    <q-checkbox v-model="showYappuruppu" class="tamil col-lg-1 row" @input="showYappuruppu">யாப்புறுப்புக்களை மட்டும் வெளியிடவும். <br/> <small>பாவினை கண்டறிய வேண்டாம்</small></q-checkbox>
-
+    <q-checkbox v-model="modifyKazhinediladi" class="tamil col-lg-1 row q-mb-sm" @input="demo" v-if="visibleYappuruppu">
+    <small>சீர் சீர் சீர்<br/>
+  &nbsp;&nbsp;&nbsp;&nbsp;சீர் சீர் சீர்</small> => ஒரே கழிநெடிலடியாக கொள்க</q-checkbox>
+    <q-checkbox v-model="showYappuruppu" class="tamil col-lg-1 row" @input="showYappuruppu">யாப்புறுப்புக்களை மட்டும் வெளியிடவும்<br/> <small>பாவினை கண்டறிய வேண்டாம்</small></q-checkbox>
     <div class="row">
       <q-checkbox v-model="checkTypeActive" class="tamil col-lg-1" @input="activateCheck"/>
       <q-select v-model="checkType" :options="verseTypes" label="விதிகளோடு பொருத்துக" class="q-ml-sm tamil col-xs-8 col-lg-6" borderless/>
@@ -52,17 +54,18 @@
         class="tamil"
       >
         <q-checkbox v-model="kurilu" class="tamil col-lg-1" @input="demo" label="உயிர்முன் குற்றியலுகரத்தை அலகிடாது விடுக"/>
-        <q-checkbox v-model="kurili" class="tamil col-lg-1" @input="demo" label="குற்றியலிகரத்தை அலடிகிடாது விடுக"/>
+        <q-checkbox v-model="kurili" class="tamil col-lg-1" @input="demo" label="குற்றியலிகரத்தை அலகிடாது விடுக"/>
         <q-checkbox v-model="aythamkuri" class="tamil col-lg-1" @input="demo" label="ஆய்தத்தை குறில் எழுத்தாக அலகிடுக"/>
         <q-checkbox v-model="extralong" class="tamil col-lg-1" @input="demo" label="உயிரளபெடையை நெடில் எழுத்தாக அலகிடுக"/>
     </q-expansion-item>
 <social-sharing :url="sharingURL"
-                      :title="sharingQuoteVVerse + ' ' + sharingURL"
+                      :title="sharingQuoteVVerse"
                       :description="sharingQuoteVVerse"
                       :quote="sharingQuoteVVerse"
                       hashtags="tamil, poetry, prosody, avalokitam"
                       class="q-mt-md"
-                      inline-template>
+                      inline-template
+                      >
   <div class="social">
       <network network="facebook" class="q-ma-md cursor-pointer">
         <img src="../statics/facebook.svg" width="20px">
@@ -130,7 +133,7 @@
             ref="explan22"
             dense
             v-for="verseType in closestType(text, result.verse)"
-            :key="'verseType' + verseType"
+            :key="'verseType' + verseType.value"
         >
           <rule-list :ruleslist="result.verse[verseType.value][0]" :explanation="result.verse.Explanation[0]" ::type="verseType.value" :checkactive="checkTypeActive"></rule-list>
         </q-expansion-item>
@@ -203,6 +206,9 @@ import OrnamentDisplay from '../components/OrnamentDisplay'
 import ScansionAll from '../components/ScansionAll'
 import RuleList from '../components/RuleList'
 import SocialSharing from 'vue-social-sharing'
+import { BitlyClient } from 'bitly'
+const bitly = new BitlyClient('', {})
+
 var _ = require('underscore')
 
 import { LinkMixin } from '../mixin/LinkMixin'
@@ -223,6 +229,8 @@ export default {
   data () {
     return {
       text: '',
+      visibleYappuruppu: false,
+      modifyKazhinediladi: false,
       showYappuruppu: false,
       result: '',
       kurilu: false,
@@ -247,6 +255,24 @@ export default {
     if (typeof this.$route.query.text !== 'undefined') {
       this.text = this.$route.query.text
       this.demo()
+    }
+  },
+  watch: {
+    text: function () {
+      var lines = this.text.split('\n')
+      var index = 0
+      var check = false
+      while (index < lines.length) {
+        if (lines[index][0] !== ' ' && lines[index][1] !== ' ' && typeof lines[index + 1] !== 'undefined' && lines[index + 1][0] === ' ' && lines[index + 1][1] === ' ') {
+          check = check || true
+
+          index = index + 2
+        } else {
+          index = index + 1
+        }
+      }
+
+      this.visibleYappuruppu = check
     }
   },
   computed: {
@@ -290,6 +316,15 @@ export default {
     }
   },
   methods: {
+    shortenURL: async function (url) {
+      let result = ''
+      try {
+        result = await bitly.shorten(url)
+      } catch (e) {
+        result = ''
+      }
+      return result
+    },
     soundCalculate: function (result) {
       var links = this.countLinksPercent(result)
       if (this.result.verse.$.metre.includes('வெண்பா')) {
@@ -433,12 +468,49 @@ export default {
       this.$refs.howto.hide()
       this.demo()
     },
+    kazhinediladi: function () {
+      /* Check for  Kazhinediladi */
+
+      var lines = this.text.split('\n')
+
+      var textNew = ''
+
+      var index = 0
+
+      while (index < lines.length) {
+        if (lines[index][0] !== ' ' && lines[index][1] !== ' ' && typeof lines[index + 1] !== 'undefined' && lines[index + 1][0] === ' ' && lines[index + 1][1] === ' ') {
+          textNew += lines[index].trim() + ' ' + lines[index + 1] + '\n'
+
+          index = index + 2
+        } else {
+          textNew += lines[index].trim() + '\n'
+          index = index + 1
+        }
+      }
+
+      return textNew.trim()
+    },
     demo: async function () {
       if (typeof this.text === 'string' && this.text !== '') {
         this.showProgress = true
         this.updateKey = !this.updateKey
 
+        /* Remove Punctionation */
+
+        var punct = [',', '\\.', ';', ':', '\\?', '\\!', '"', '\'']
+
         var text = this.text
+
+        if (this.modifyKazhinediladi) {
+          text = this.kazhinediladi()
+        } else {
+          text = text.replace(/ {2,}/g, ' ')
+          text = text.split('\n').map(x => x.trim()).join('\n')
+        }
+
+        punct.forEach(function (val) {
+          text = text.replace(new RegExp(val, 'g'), '')
+        })
 
         // text = text.split('\n').filter(x => x.trim() !== '').join('\n').trim()
 

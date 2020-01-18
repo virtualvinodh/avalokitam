@@ -1,7 +1,8 @@
 <template>
     <q-page padding>
     <div class="text-h5 q-mt-lg q-mb-md">Android</div>
-    <div class="text-body1">You can download the android wrapper for the site in the <a href="https://play.google.com/store/apps/details?id=org.cordova.quasar.avalokitam">Play store</a>.</div>
+     <div class="text-body1"> Coming soon </div>
+    <!-- <div class="text-body1">You can download the android wrapper for the site in the <a href="https://play.google.com/store/apps/details?id=org.cordova.quasar.avalokitam">Play store</a>.</div>-->
     <div class="text-h5 q-mt-lg q-mb-md">Docker</div>
     <div class="text-body1">Avalokitam is now available as a docker container. Please follow the below steps to run Avalokitam locally in your system.</div>
     <div class="text-body1">

@@ -540,8 +540,6 @@ export const LinkMixin = {
               matra = matra + 2
             } else if (index === 0) {
               matra = matra + 1.5
-            } else if (index === count) {
-              matra = matra + 1.5
             } else {
               matra = matra + 1
             }
@@ -563,8 +561,6 @@ export const LinkMixin = {
             if (index === 0 && index === count) {
               matra = matra + 2
             } else if (index === 0) {
-              matra = matra + 1.5
-            } else if (index === count) {
               matra = matra + 1.5
             } else {
               matra = matra + 1

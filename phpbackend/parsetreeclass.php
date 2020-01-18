@@ -418,8 +418,8 @@ class ProsodyParseTree
 		$word = preg_replace ( "/^(.)Y/", "$1#$2", $word );
 		$word = preg_replace ( "/^(.)W/", "$1%$2", $word );
 
-		$word = preg_replace ( "/(.)Y$/", "$1#$2", $word );
-		$word = preg_replace ( "/(.)W$/", "$1%$2", $word );
+		$word = preg_replace ( "/(.)Y$/", "$1B$2", $word );
+		$word = preg_replace ( "/(.)W$/", "$1Q$2", $word );
 
 		$word = preg_replace ( "/(.)Y(.)/", "$1B$1", $word );
 		$word = preg_replace ( "/(.)W(.)/", "$1Q$2", $word );
@@ -2171,10 +2171,10 @@ class ProsodyParseTree
 		$TaniccolEqual = TRUE;
 
 		if($TaniccolCheck) {
-			$TaniccolWord = $this->ReturnTaniccol ($this->InputSourceText, 1);
+			$TaniccolWord = trim($this->ReturnTaniccol ($this->InputSourceText, 1));
 
 			for($LineIndex = 1; $LineIndex <= $this->TotalLines; $LineIndex ++) {
-				$TaniccolEqual = $TaniccolEqual && $this->ReturnTaniccol ($this->InputSourceText, $LineIndex) == $TaniccolWord;
+				$TaniccolEqual = $TaniccolEqual && trim($this->ReturnTaniccol ($this->InputSourceText, $LineIndex)) == $TaniccolWord;
 			}
 		}
 
@@ -2313,12 +2313,12 @@ class ProsodyParseTree
 			$this->MetreErrors['_Aciriya_ttAZicY'][1][0] = 'இது மூன்றடுக்காகவும் வரலாம். மூன்றடுக்கிவரின் இது ஆசிரிய ஒத்தாழிசை ஆகும்.';
 			$this->MetreErrors['_Aciriya_ttAZicY'][1][1] = 'info';
 
-			if ($TaazhisaiCheck) {
-				$this->MetreErrors['_Aciriya_ttAZicY'][2][0] = 'அனைத்து அடிகளிலும் ஒரே அடி எதுகை அமைதல் சிறப்பு';
+			if ($TaazhisaiCheckTriple) {
+				$this->MetreErrors['_Aciriya_ttAZicY'][2][0] = 'ஒவ்வொரு அடுக்கிலும் ஒரே அடி எதுகை அமைதல் சிறப்பு';
 			}
 
 			else {
-				$this->MetreErrors['_Aciriya_ttAZicY'][2][0] = 'ஒவ்வொரு அடுக்கிலும் ஒரே அடி எதுகை அமைதல் சிறப்பு';
+				$this->MetreErrors['_Aciriya_ttAZicY'][2][0] = 'அனைத்து அடிகளிலும் ஒரே அடி எதுகை அமைதல் சிறப்பு';
 			}
 
 			$this->MetreErrors['_Aciriya_ttAZicY'][2][1] = 'info';
@@ -2391,12 +2391,12 @@ class ProsodyParseTree
 		if ($TaazhisaiCheck || $TaazhisaiCheckTriple) {
 			$MetreType = "_Aciriya_ttAZicY";
 
-			if ($TaazhisaiCheck && $this->VenpaaTypeExpl == '') {
-				$this->VenpaaTypeExpl = 'இது தனித்து வந்த ஆசிரியத்தாழிசை';
-			}
-
 			if ($TaazhisaiCheckTriple && $this->VenpaaTypeExpl == '') {
 				$this->VenpaaTypeExpl = 'இது மூன்றடுக்கி வந்த ஆசிரிய ஒத்தாழிசை';
+			}
+
+			else if ($TaazhisaiCheck && $this->VenpaaTypeExpl == '') {
+				$this->VenpaaTypeExpl = 'இது தனித்து வந்த ஆசிரியத்தாழிசை';
 			}
 		}
 		else if ($TuraiCheck)
@@ -2681,16 +2681,15 @@ class ProsodyParseTree
 
 				if (($WCount % 4) == 1) {
 
-					$WordBondClassCheckKK = strpos($BondType,"ஆசிரியத்தளை") !== FALSE;
+					$WordBondClassCheckKK = $WordBondClassCheckKK && strpos($BondType,"ஆசிரியத்தளை") !== FALSE;
 				}
 				if (($WCount % 4) > 1) {
 
-					$WordBondClassCheckKK = strpos($BondType,"வெண்டளை") !== FALSE;
+					$WordBondClassCheckKK = $WordBondClassCheckKK && strpos($BondType,"வெண்டளை") !== FALSE;
 				}
 
 				$WCount ++;
 			}
-
 
 			$KattalaiCheckKK = $LineCheckKK && $WordCountCheckKK && $WordBondClassCheckKK;
 
@@ -3495,16 +3494,17 @@ class ProsodyParseTree
 				"I",
 				"U",
 				"E",
-				"O"
+				"O",
+				"W",
+				"Y"
 		);
+
 		$ShortVowels = array (
 				"a",
 				"i",
 				"u",
 				"e",
-				"o",
-				"W",
-				"Y"
+				"o"
 		);
 
 		$FirstWordInit = substr ( $FirstWord, 1, 1 );
@@ -3521,16 +3521,16 @@ class ProsodyParseTree
 				"I",
 				"U",
 				"E",
-				"O"
+				"O",
+				"W",
+				"Y"
 		);
 		$ShortVowels = array (
 				"a",
 				"i",
 				"u",
 				"e",
-				"o",
-				"W",
-				"Y"
+				"o"
 		);
 
 		$FirstWordInit = substr ( $FirstWord, 1, 1 );
