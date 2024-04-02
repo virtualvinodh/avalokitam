@@ -4,7 +4,7 @@ export const LinkMixin = {
   data () {
     return {
       apiCall: this.$axios.create({
-        baseURL: 'http://localhost',
+        baseURL: '/',
         timeout: 100000
       }),
       vowels: 'அஆஇஈஉஊஎஏஐஒஓஔ'.split(''),

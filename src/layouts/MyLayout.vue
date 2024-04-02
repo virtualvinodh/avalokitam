@@ -167,11 +167,11 @@ export default {
 </script>
 
 <style>
-/* /* @import url('https://fonts.googleapis.com/css?family=Mukta+Malar&subset=latin-ext,tamil'); */ */
+@import url('https://fonts.googleapis.com/css?family=Mukta+Malar&subset=latin-ext,tamil');
 
 @font-face {
   font-family: 'e-Pandya';
-  src: url('../statics/e-VatteluttuOT.ttf')
+  src: url('https://cdn.jsdelivr.net/gh/virtualvinodh/aksharamukha/aksharamukha-front/src/statics/e-VatteluttuOT.ttf')
 }
 
 @font-face {

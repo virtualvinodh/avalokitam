@@ -1,0 +1,8 @@
+runtime: custom
+env: flex
+resources:
+  cpu: 0.5
+  memory_gb: 1.3
+  disk_size_gb: 10
+manual_scaling:
+  instances: 1

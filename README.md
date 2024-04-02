@@ -20,7 +20,9 @@ The project can be accessed at http://www.avalokitam.com
 
 பண்டைய தமிழ் மஹாயான பௌத்தர்களால் தமிழ் மொழியை அகத்தியருக்கு உபதேசித்தவராக கருதப்பட்ட, சகலபுத்தர்களின் மஹாகருணையின் உருவகமாக விளங்கும் பகவான் போதிசத்துவர் அவலோகிதேஸ்வரரின் பெயர் இம்மென்பொருளுக்கு இடப்பட்டது.
 
-# Docker
+# GAE
 
-The project is available in docker hub as virtualvinodh/avalokitam, with port 80 exposed.
+COPY files from phpbackend to dist, compile the frontend and then deploy to GAE
+
+#
 

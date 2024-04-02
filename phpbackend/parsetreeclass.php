@@ -22,7 +22,7 @@ require_once "utilityfunctions.php";
 error_reporting(0);
 
 /**
- * Avalokitam - Tamil Prosody Analyzer
+ * Avalokitam - Tamil Prosody Analyzer - The new one
  *
  * @author Vinodh Rajan, vinodh@virtualviondh.com
  *
