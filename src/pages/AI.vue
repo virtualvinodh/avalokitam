@@ -6,7 +6,7 @@
       <div :style="$q.screen.lt.md ? '' : 'width:35%;min-width:280px;max-width:420px'">
         <div class="q-ma-md">
 
-          <div class="text-h6 tamil q-mb-md" style="color:#555">வெண்பா இயற்றுக</div>
+          <div class="text-h6 tamil q-mb-md" style="color:#555">வெண்பா AI</div>
 
           <!-- Mode Toggle -->
           <q-btn-toggle
@@ -48,10 +48,11 @@
               v-model="topic"
               outlined
               clearable
+              type="textarea"
+              :rows="3"
               class="tamil q-mb-md"
               label="தலைப்பு அல்லது கருத்து"
               placeholder="எ.கா: தாய் அன்பு, மழை, நட்பு..."
-              @keyup.enter="run"
             />
           </div>
 
@@ -328,8 +329,11 @@ export default {
     if (this.$route.query.verse) {
       this.inputVerse = this.$route.query.verse
       this.mode = 'fix'
+      this.$nextTick(() => this.run())
     }
-    fetch(AI_BACKEND + '/ai/usage', { headers: { 'X-Session-Id': getOrCreateSessionId() } })
+    const usageHeaders = { 'X-Session-Id': getOrCreateSessionId() }
+    if (this.devToken) usageHeaders['X-Dev-Token'] = this.devToken
+    fetch(AI_BACKEND + '/ai/usage', { headers: usageHeaders })
       .then(r => r.json())
       .then(d => { this.remaining = d.remaining })
       .catch(() => {})
@@ -362,6 +366,7 @@ export default {
       this.genTokens = null
     },
     async run () {
+      if (this.loading || this.remaining === 0) return
       this.reset()
       this.loading = true
 

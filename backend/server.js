@@ -67,6 +67,8 @@ app.get('/health', (_req, res) => {
 
 
 app.get('/ai/usage', (req, res) => {
+  const isDev = process.env.DEV_TOKEN && req.headers['x-dev-token'] === process.env.DEV_TOKEN
+  if (isDev) return res.json({ used: 0, remaining: 999 })
   const session = getSessionUsage(req)
   if (!session) return res.json({ used: 0, remaining: FREE_LIMIT })
   res.json({ used: session.count, remaining: Math.max(0, FREE_LIMIT - session.count) })

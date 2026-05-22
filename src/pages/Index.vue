@@ -8,6 +8,18 @@
 >
 <template v-slot:before>
  <div class="col-lg-4 col-xs-11 q-ma-md">
+
+  <q-banner v-if="showAIBanner" inline-actions class="bg-grey-9 text-white tamil q-mb-md" dense rounded>
+    <template v-slot:avatar>
+      <q-icon name="stars" color="white" size="22px" />
+    </template>
+    AI மூலம் வெண்பா இயற்றுங்கள்!
+    <template v-slot:action>
+      <q-btn unelevated dense color="grey-6" text-color="white" label="முயற்சி செய்க" class="tamil" @click="$router.push('/ai')" />
+      <q-btn flat dense round color="white" icon="close" @click="dismissAIBanner" />
+    </template>
+  </q-banner>
+
  <q-expansion-item
         icon="input"
         label="பா உள்ளிடும் வழிமுறைகள்"
@@ -240,6 +252,7 @@ export default {
   },
   data () {
     return {
+      showAIBanner: localStorage.getItem('ai_banner_dismissed') !== '1',
       text: '',
       visibleYappuruppu: false,
       modifyKazhinediladi: false,
@@ -335,6 +348,10 @@ export default {
     }
   },
   methods: {
+    dismissAIBanner () {
+      this.showAIBanner = false
+      localStorage.setItem('ai_banner_dismissed', '1')
+    },
     shortenURL: async function (url) {
       let result = ''
       try {

@@ -47,6 +47,14 @@
             <q-item-label>ஆராய்க</q-item-label>
           </q-item-section>
         </q-item>
+        <q-item class="tamil" to="/ai" active-class="bg-grey-4">
+          <q-item-section avatar>
+            <q-icon name="stars" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>வெண்பா AI</q-item-label>
+          </q-item-section>
+        </q-item>
         <q-item class="tamil" to="/search" active-class="bg-grey-4">
           <q-item-section avatar>
             <q-icon name="search" />
@@ -101,14 +109,6 @@
           </q-item-section>
           <q-item-section>
             <q-item-label>உதவி</q-item-label>
-          </q-item-section>
-        </q-item>
-        <q-item class="tamil" to="/ai" active-class="bg-grey-4">
-          <q-item-section avatar>
-            <q-icon name="auto_awesome" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>AI உதவியாளர்</q-item-label>
           </q-item-section>
         </q-item>
         <q-item class="tamil" to="/about" active-class="bg-grey-4">
