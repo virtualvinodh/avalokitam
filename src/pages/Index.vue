@@ -78,6 +78,18 @@
       </network>
   </div>
 </social-sharing>
+  <div class="q-mt-md q-pa-md q-gutter-sm" v-if="hasProsodicErrors && !showYappuruppu">
+    <q-banner class="bg-grey-8 text-white tamil" dense rounded>
+      <template v-slot:avatar>
+        <q-icon name="auto_awesome" color="white" size="24px"/>
+      </template>
+      AI மூலம் இந்தப் பாவை திருத்திக்கொள்ளலாம்.
+      <template v-slot:action>
+        <q-btn color="grey-10" label="AI-யால் திருத்துக" icon="build" @click="fixWithAI" dense/>
+      </template>
+    </q-banner>
+  </div>
+
   <div class="q-mt-md q-pa-md q-gutter-sm" v-if="venpaaCheckFlag && !checkTypeActive && !showYappuruppu">
     <q-banner class="bg-grey-8 text-white tamil">
       <template v-slot:avatar>
@@ -308,6 +320,13 @@ export default {
     lineCount: function () {
       return this.lineCountGet(this.text)
     },
+    hasProsodicErrors: function () {
+      if (typeof this.result['verse'] === 'undefined' || this.result.verse.$.metre === '') return false
+      if (!this.checkTypeActive) return false
+      const rules = this.result.verse[this.checkType.value][0]
+      if (!rules || !rules.Result) return false
+      return rules.Result[rules.Result.length - 1] !== '1'
+    },
     venpaaCheck: function () {
       var lineCountFront = this.lineCount.slice(0, -1)
       var lineCountLast = this.lineCount[this.lineCount.length - 1]
@@ -405,6 +424,12 @@ export default {
       var countLinks = Array.from(map.entries())
 
       return countLinks.map(x => [x[0], (x[1] / linkageIndividual.length) * 100]).map(x => x[0])
+    },
+    fixWithAI: function () {
+      this.$router.push({
+        path: '/ai',
+        query: { verse: this.text, verseType: this.checkType.value }
+      })
     },
     activateVenpaCheck: function () {
       this.checkTypeActive = true

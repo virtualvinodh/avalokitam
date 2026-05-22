@@ -103,6 +103,14 @@
             <q-item-label>உதவி</q-item-label>
           </q-item-section>
         </q-item>
+        <q-item class="tamil" to="/ai" active-class="bg-grey-4">
+          <q-item-section avatar>
+            <q-icon name="auto_awesome" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>AI உதவியாளர்</q-item-label>
+          </q-item-section>
+        </q-item>
         <q-item class="tamil" to="/about" active-class="bg-grey-4">
           <q-item-section avatar>
             <q-icon name="info" />

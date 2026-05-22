@@ -1,0 +1,418 @@
+<template>
+  <q-page>
+    <q-splitter v-model="splitterModel" :horizontal="$q.platform.is.mobile">
+
+      <!-- LEFT: inputs -->
+      <template v-slot:before>
+        <div class="q-ma-md">
+
+          <div class="text-h6 tamil q-mb-md" style="color:#555">வெண்பா இயற்றுக</div>
+
+          <!-- Mode Toggle -->
+          <q-btn-toggle
+            v-model="mode"
+            spread
+            no-caps
+            toggle-color="grey-9"
+            color="grey-3"
+            text-color="grey-9"
+            class="tamil q-mb-lg"
+            :options="[
+              { label: 'வெண்பா இயற்றுக', value: 'generate', icon: 'auto_awesome' },
+              { label: 'பிழை திருத்துக', value: 'fix', icon: 'build' }
+            ]"
+          />
+
+          <!-- Verse variant selector (generate mode only) -->
+          <div v-if="mode === 'generate'" class="q-mb-md">
+            <div class="text-caption text-grey-6 tamil q-mb-xs">பா வகை</div>
+            <q-btn-toggle
+              v-model="verseType"
+              spread
+              no-caps
+              dense
+              toggle-color="grey-8"
+              color="grey-2"
+              text-color="grey-8"
+              class="tamil"
+              :options="[
+                { label: 'வெண்பா', value: 'venpaa' },
+                { label: 'குறள் வெண்பா', value: 'kuralpaa' }
+              ]"
+            />
+          </div>
+
+          <!-- Generate: topic input -->
+          <div v-if="mode === 'generate'">
+            <q-input
+              v-model="topic"
+              outlined
+              clearable
+              class="tamil q-mb-md"
+              label="தலைப்பு அல்லது கருத்து"
+              placeholder="எ.கா: தாய் அன்பு, மழை, நட்பு..."
+              @keyup.enter="run"
+            />
+          </div>
+
+          <!-- Fix: verse input -->
+          <div v-if="mode === 'fix'">
+            <q-input
+              v-model="inputVerse"
+              outlined
+              clearable
+              type="textarea"
+              :rows="6"
+              class="tamil q-mb-md"
+              label="திருத்த வேண்டிய பா"
+              placeholder="பிழையுள்ள பாவை இங்கே இடுக..."
+            />
+          </div>
+
+          <!-- Usage indicator -->
+          <div v-if="remaining !== null" class="q-mb-sm">
+            <q-badge
+              :color="remaining > 1 ? 'grey-6' : remaining === 1 ? 'orange-8' : 'red-8'"
+              class="tamil"
+            >
+              {{ remaining > 0 ? `${remaining} இலவச பயன்பாடு மீதமுள்ளது` : 'இலவச பயன்பாடு முடிந்தது' }}
+            </q-badge>
+          </div>
+
+          <!-- Run Button -->
+          <q-btn
+            color="grey-9"
+            :label="mode === 'fix' ? 'திருத்துக' : (verseType === 'kuralpaa' ? 'குறள் வெண்பா இயற்றுக' : 'வெண்பா இயற்றுக')"
+            :icon="mode === 'generate' ? 'auto_awesome' : 'build'"
+            :loading="loading"
+            :disable="loading || remaining === 0 || (mode === 'generate' ? !topic.trim() : !inputVerse.trim())"
+            class="tamil full-width q-mb-md"
+            size="md"
+            @click="run"
+          >
+            <template v-slot:loading>
+              <q-spinner-dots class="on-left" />
+              <span class="tamil">AI செயல்படுகிறது...</span>
+            </template>
+          </q-btn>
+
+          <!-- Error -->
+          <q-banner v-if="errorMsg" class="bg-red-8 text-white tamil q-mt-sm" dense rounded>
+            <template v-slot:avatar><q-icon name="error" /></template>
+            {{ errorMsg }}
+          </q-banner>
+
+        </div>
+      </template>
+
+      <!-- RIGHT: iteration progress + result -->
+      <template v-slot:after>
+        <div class="q-ma-md">
+
+          <!-- Empty state -->
+          <div v-if="!loading && iterations.length === 0" class="text-center q-mt-xl text-grey-5">
+            <q-icon name="auto_awesome" size="60px" class="q-mb-md" />
+            <div class="tamil text-h6">
+              {{ mode === 'generate' ? 'தலைப்பு கொடுத்து பா இயற்றுங்கள்' : 'பிழையுள்ள பாவை இட்டு திருத்துங்கள்' }}
+            </div>
+            <div class="tamil text-caption q-mt-sm text-grey-6">AI பா இயற்றும். யாப்பு பகுப்பாளர் சரிபார்க்கும். 5 முறை வரை மீண்டும் முயலும்.</div>
+          </div>
+
+          <!-- Live status: Gemini thinking -->
+          <div v-if="currentThinking !== null" class="q-mb-md">
+            <div class="row items-center q-mb-xs">
+              <q-chip color="blue-8" text-color="white" size="sm" icon="psychology" class="tamil">
+                முயற்சி {{ currentThinking.attempt }} — AI யோசிக்கிறது...
+              </q-chip>
+            </div>
+            <div class="q-pa-sm rounded-borders row items-center" style="background:#f0f4ff">
+              <q-spinner-dots color="blue-8" size="24px" class="q-mr-sm" />
+              <span class="tamil text-grey-7">Gemini பா இயற்றுகிறது...</span>
+            </div>
+            <q-expansion-item dense label="AI-க்கு அனுப்பிய உள்ளீடு" header-class="text-caption text-grey-6 q-pl-none" class="q-mt-xs">
+              <div class="q-pa-sm rounded-borders text-caption" style="background:#eef2ff; white-space:pre-wrap; font-family:monospace; font-size:0.75em; max-height:200px; overflow-y:auto">{{ currentThinking.prompt }}</div>
+            </q-expansion-item>
+          </div>
+
+          <!-- Live status: Parser checking -->
+          <div v-if="currentChecking !== null" class="q-mb-md">
+            <div class="row items-center q-mb-xs">
+              <q-chip color="orange-8" text-color="white" size="sm" icon="rule" class="tamil">
+                முயற்சி {{ currentChecking.attempt }} — யாப்பு சரிபார்க்கிறது...
+              </q-chip>
+            </div>
+            <div
+              class="tamil q-pa-sm rounded-borders q-mb-xs"
+              style="background:#fff8f0; white-space:pre-line; font-size:1.05em; line-height:1.8; opacity:0.8; font-family:inherit"
+            >{{ currentChecking.verse }}</div>
+            <div class="q-pa-sm rounded-borders row items-center" style="background:#fff8f0">
+              <q-spinner-dots color="orange-8" size="20px" class="q-mr-sm" />
+              <span class="tamil text-grey-7">யாப்பு பகுப்பாளர் சரிபார்க்கிறது...</span>
+            </div>
+          </div>
+
+          <!-- Iterations -->
+          <div v-if="iterations.length > 0">
+            <div class="text-caption text-grey-6 tamil q-mb-sm">செயல்முறை நிலை</div>
+
+            <div v-for="(iter, i) in iterations" :key="i" class="q-mb-md">
+              <div class="row items-center q-mb-xs">
+                <q-chip
+                  :color="iter.errors && iter.errors.length === 0 ? 'positive' : 'orange-8'"
+                  text-color="white"
+                  size="sm"
+                  class="tamil"
+                  :icon="iter.errors && iter.errors.length === 0 ? 'check_circle' : 'sync'"
+                >
+                  முயற்சி {{ iter.attempt }}
+                  <span v-if="iter.errors && iter.errors.length === 0"> — சரியானது</span>
+                  <span v-else-if="iter.errors"> — {{ iter.errors.length }} பிழை</span>
+                </q-chip>
+                <q-chip v-if="iter.metreType" color="grey-7" text-color="white" size="sm" class="tamil q-ml-xs">
+                  {{ iter.metreType }}
+                </q-chip>
+              </div>
+
+              <!-- Verse output -->
+              <template v-if="success && i === iterations.length - 1 && finalVerse">
+                <!-- 1. Final verse on dark background + action buttons -->
+                <div class="rounded-borders q-mb-sm" style="background:#1a1a1a">
+                  <div class="tamil q-pa-md text-white" style="white-space:pre-line; font-size:1.15em; line-height:1.9">{{ finalVerse }}</div>
+                  <div class="row q-px-sm q-pb-sm">
+                    <q-btn flat dense dark icon="content_copy" label="நகலெடு" class="tamil text-grey-4" size="sm" @click="copyVerse" />
+                    <q-btn flat dense dark icon="analytics" label="ஆய்விடம்" class="tamil text-grey-4" size="sm" @click="openInAnalyzer" />
+                    <q-btn flat dense dark icon="refresh" label="மீண்டும்" class="tamil text-grey-4" size="sm" @click="run" />
+                  </div>
+                </div>
+                <!-- 2. Sandhi split -->
+                <div v-if="sandhi" class="tamil q-pa-sm q-mb-sm rounded-borders" style="background:#f5f5f5; white-space:pre-line; font-size:1.05em; line-height:1.8; color:#333">{{ sandhi }}</div>
+                <!-- 3. Meaning -->
+                <div v-if="explanation" class="tamil q-pa-sm q-mb-sm text-grey-7" style="font-size:0.95em; line-height:1.7">{{ explanation }}</div>
+                <!-- 4. ScansionAll -->
+                <div v-if="iter.parsedResult" class="q-pa-sm rounded-borders" style="background:#f5f5f5; overflow-x:auto">
+                  <scansion-all
+                    :metricalFeet="metricalFeetGet(iter.parsedResult)"
+                    :hide="true"
+                    :linkage="linkageGet(iter.parsedResult)"
+                    :linetypes="linetypesGet(iter.parsedResult)"
+                    :checkvenpa="true"
+                    :venpalastword="safeVenpaLastWord(iter.parsedResult)"
+                  />
+                </div>
+              </template>
+              <div v-else class="q-pa-sm rounded-borders" style="background:#f5f5f5">
+                <div class="tamil" style="white-space:pre-line; font-size:1.05em; line-height:1.8">{{ iter.verse }}</div>
+              </div>
+
+              <!-- Errors list -->
+              <div v-if="iter.errors && iter.errors.length > 0" class="q-mt-xs q-pl-sm">
+                <div
+                  v-for="(err, j) in iter.errors"
+                  :key="j"
+                  class="text-caption text-negative tamil q-mt-xs"
+                >
+                  <q-icon name="warning" size="12px" class="q-mr-xs" />{{ err.rule }}
+                </div>
+              </div>
+
+              <!-- Debug: prompt sent to AI -->
+              <q-expansion-item v-if="iter.prompt" dense label="AI-க்கு அனுப்பிய உள்ளீடு" header-class="text-caption text-grey-5 q-pl-none" class="q-mt-xs">
+                <div class="q-pa-sm rounded-borders text-caption" style="background:#f5f5f5; white-space:pre-wrap; font-family:monospace; font-size:0.75em; max-height:200px; overflow-y:auto">{{ iter.prompt }}</div>
+              </q-expansion-item>
+
+              <!-- Connector line between iterations -->
+              <div v-if="i < iterations.length - 1" class="q-ml-sm q-my-xs" style="border-left:2px dashed #ccc; height:16px; margin-left:12px"/>
+            </div>
+
+            <!-- Best-effort banner (success uses the black card above) -->
+            <q-banner
+              v-if="finalVerse && !success"
+              class="bg-orange-9 text-white tamil q-mt-md rounded-borders"
+            >
+              <template v-slot:avatar>
+                <q-icon name="info" size="28px" />
+              </template>
+              <div class="text-caption q-mb-xs">சிறந்த முயற்சி — சில பிழைகள் இருக்கலாம்</div>
+              <div class="tamil" style="white-space:pre-line; font-size:1.15em; line-height:1.9">{{ finalVerse }}</div>
+              <template v-slot:action>
+                <q-btn flat dense icon="content_copy" label="நகலெடு" class="tamil" @click="copyVerse" />
+                <q-btn flat dense icon="analytics" label="ஆய்விடம்" class="tamil" @click="openInAnalyzer" />
+                <q-btn flat dense icon="refresh" label="மீண்டும்" class="tamil" @click="run" />
+              </template>
+            </q-banner>
+          </div>
+
+        </div>
+      </template>
+    </q-splitter>
+  </q-page>
+</template>
+
+<script>
+import ScansionAll from '../components/ScansionAll'
+import { LinkMixin } from '../mixin/LinkMixin'
+
+function copyToClipboard (text) {
+  return navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.resolve()
+}
+
+const AI_BACKEND = 'http://localhost:3001'
+
+function getOrCreateSessionId () {
+  let id = localStorage.getItem('ai_session_id')
+  if (!id) {
+    id = 'sess_' + Math.random().toString(36).slice(2) + Date.now().toString(36)
+    localStorage.setItem('ai_session_id', id)
+  }
+  return id
+}
+
+export default {
+  name: 'PageAI',
+  components: { ScansionAll },
+  mixins: [LinkMixin],
+  data () {
+    return {
+      splitterModel: 35,
+      mode: 'generate',
+      verseType: 'venpaa',
+      topic: '',
+      inputVerse: '',
+      loading: false,
+      iterations: [],
+      finalVerse: null,
+      success: false,
+      errorMsg: null,
+      currentThinking: null,
+      currentChecking: null,
+      remaining: null,
+      explanation: null,
+      sandhi: null
+    }
+  },
+  mounted () {
+    if (this.$route.query.verse) {
+      this.inputVerse = this.$route.query.verse
+      this.mode = 'fix'
+    }
+    fetch(AI_BACKEND + '/ai/usage', { headers: { 'X-Session-Id': getOrCreateSessionId() } })
+      .then(r => r.json())
+      .then(d => { this.remaining = d.remaining })
+      .catch(() => {})
+  },
+  watch: {
+    mode () {
+      this.reset()
+    }
+  },
+  methods: {
+    reset () {
+      this.iterations = []
+      this.finalVerse = null
+      this.success = false
+      this.errorMsg = null
+      this.currentThinking = null
+      this.currentChecking = null
+      this.explanation = null
+      this.sandhi = null
+    },
+    async run () {
+      this.reset()
+      this.loading = true
+
+      const body = {
+        mode: this.mode,
+        verseType: this.verseType,
+        ...(this.mode === 'generate' ? { topic: this.topic } : { verse: this.inputVerse })
+      }
+
+      try {
+        const response = await fetch(AI_BACKEND + '/ai/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Session-Id': getOrCreateSessionId() },
+          body: JSON.stringify(body)
+        })
+
+        if (response.status === 403) {
+          this.errorMsg = 'இலவச பயன்பாடு முடிந்தது. மேலும் பயன்படுத்த உள்நுழைக.'
+          this.remaining = 0
+          this.loading = false
+          return
+        }
+
+        if (response.status === 503) {
+          this.errorMsg = 'இன்றைய AI பயன்பாடு முடிந்தது. நாளை மீண்டும் முயலுங்கள்.'
+          this.loading = false
+          return
+        }
+
+        if (!response.ok) throw new Error('Backend error ' + response.status)
+
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop()
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            let event
+            try { event = JSON.parse(line.slice(6)) } catch (e) { continue }
+
+            if (event.type === 'thinking') {
+              this.currentThinking = { attempt: event.attempt, prompt: event.prompt }
+              this.currentChecking = null
+            } else if (event.type === 'checking') {
+              this.currentChecking = { attempt: event.attempt, verse: event.verse, thinking: event.thinking || null }
+              this.currentThinking = null
+            } else if (event.type === 'iteration') {
+              const prompt = this.currentThinking ? this.currentThinking.prompt : null
+              const thinking = this.currentChecking ? this.currentChecking.thinking : null
+              this.currentChecking = null
+              this.currentThinking = null
+              const idx = this.iterations.length
+              this.iterations.push({ ...event, prompt, thinking, parsedResult: null })
+              if (event.xml) {
+                this.getJson(event.xml).then(parsed => {
+                  this.$set(this.iterations, idx, { ...this.iterations[idx], parsedResult: parsed })
+                })
+              }
+            } else if (event.type === 'done') {
+              this.finalVerse = event.verse
+              this.success = event.success
+              this.loading = false
+            } else if (event.type === 'sandhi') {
+              this.sandhi = event.text
+            } else if (event.type === 'explanation') {
+              this.explanation = event.text
+            } else if (event.type === 'usage') {
+              this.remaining = event.remaining
+            } else if (event.type === 'error') {
+              this.errorMsg = event.message
+              this.loading = false
+            }
+          }
+        }
+      } catch (err) {
+        this.errorMsg = 'AI backend-ஐ அணுக முடியவில்லை. Backend இயங்குகிறதா என சரிபாருங்கள்.'
+        this.loading = false
+      }
+    },
+    safeVenpaLastWord (result) {
+      try { return this.vepaLastWordClass(result) } catch (e) { return 'None' }
+    },
+    copyVerse () {
+      copyToClipboard(this.finalVerse)
+        .then(() => this.$q.notify({ message: 'நகலெடுக்கப்பட்டது', color: 'grey-8', position: 'top' }))
+    },
+    openInAnalyzer () {
+      this.$router.push({ path: '/analyzer', query: { text: this.finalVerse } })
+    }
+  }
+}
+</script>
