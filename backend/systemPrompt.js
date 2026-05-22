@@ -38,6 +38,21 @@ Rule: காய்-type foot (ends நேர்) → next foot must start நே
   கருவிளங்காய் → தேமா    கருவிளங்காய் → கூவிளம்    கருவிளங்காய் → தேமாங்காய்  கருவிளங்காய் → கூவிளங்காய்
 
 Any other foot pair is ILLEGAL — do not produce it.
+
+BOND INTO THE LAST FOOT OF THE LAST LINE:
+The last foot (நாள், மலர், காசு, பிறப்பு) also obeys வெண்டளை based on its starting syllable:
+
+Rule: foot before நாள் / காசு (starts நேர்) — preceding foot must be விளம்-type or காய்-type:
+  கூவிளம் → நாள்        கூவிளம் → காசு
+  கருவிளம் → நாள்       கருவிளம் → காசு
+  தேமாங்காய் → நாள்     தேமாங்காய் → காசு
+  புளிமாங்காய் → நாள்   புளிமாங்காய் → காசு
+  கூவிளங்காய் → நாள்    கூவிளங்காய் → காசு
+  கருவிளங்காய் → நாள்   கருவிளங்காய் → காசு
+
+Rule: foot before மலர் / பிறப்பு (starts நிரை) — preceding foot must be மா-type:
+  தேமா → மலர்           தேமா → பிறப்பு
+  புளிமா → மலர்         புளிமா → பிறப்பு
 `
 
 const VERSE_TYPE_RULES = {
@@ -165,18 +180,19 @@ If the verse already reads well and is on topic, output it UNCHANGED.
 Output only the Tamil verse, nothing else.`
 }
 
-function buildSandhiAndExplainPrompt (verse) {
+function buildSandhiAndExplainPrompt (verse, context = null) {
+  const contextLine = context ? `\nThis verse was composed about: ${context}\n` : ''
   return `You are an expert in classical Tamil literature.
 
 The following Tamil verse has been composed and verified metrically:
-
+${contextLine}
 ${verse}
 
 Provide two things:
 
 1. SANDHI_SPLIT: Rewrite the verse with all sandhi (சந்தி) separated so each individual word is visible. Preserve the exact same number of lines.
 
-2. MEANING: Explain the verse's meaning in simple modern Tamil in 2-3 sentences. No scansion analysis, no line-by-line breakdown, no English.
+2. MEANING: Explain the verse's meaning in simple modern Tamil in 2-3 sentences, connecting it to the subject above. No scansion analysis, no line-by-line breakdown, no English.
 
 Output in exactly this format and nothing else:
 SANDHI_SPLIT:

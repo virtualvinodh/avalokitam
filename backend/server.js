@@ -12,6 +12,29 @@ const DAILY_GLOBAL_LIMIT = 200
 const usage = new Map() // key → { count, date }
 let globalUsage = { count: 0, date: '' }
 
+const stats = {
+  overall: { input: 0, output: 0, thinking: 0, generations: 0, cost: 0 },
+  daily:   { input: 0, output: 0, thinking: 0, generations: 0, cost: 0, date: '' },
+  monthly: { input: 0, output: 0, thinking: 0, generations: 0, cost: 0, month: '' }
+}
+
+function thisMonth () {
+  return new Date().toISOString().slice(0, 7)
+}
+
+function recordTokens (tokens) {
+  const d = today(), m = thisMonth()
+  if (stats.daily.date !== d) stats.daily = { input: 0, output: 0, thinking: 0, generations: 0, cost: 0, date: d }
+  if (stats.monthly.month !== m) stats.monthly = { input: 0, output: 0, thinking: 0, generations: 0, cost: 0, month: m }
+  for (const s of [stats.overall, stats.daily, stats.monthly]) {
+    s.input += tokens.input || 0
+    s.output += tokens.output || 0
+    s.thinking += tokens.thinking || 0
+    s.cost += tokens.cost || 0
+    s.generations++
+  }
+}
+
 function today () {
   return new Date().toISOString().slice(0, 10)
 }
@@ -38,8 +61,8 @@ function getSessionUsage (req) {
   return { id, count: getCount(id) }
 }
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', model: process.env.GEMINI_MODEL })
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', model: process.env.GEMINI_MODEL, stats })
 })
 
 
@@ -64,24 +87,29 @@ app.post('/ai/stream', async (req, res) => {
   }
 
   const ip = getIP(req)
-  const sessionUsed = getCount(sessionId)
-  const ipUsed = getCount(ip)
+  const isDev = process.env.DEV_TOKEN && req.headers['x-dev-token'] === process.env.DEV_TOKEN
 
-  if (sessionUsed >= FREE_LIMIT || ipUsed >= FREE_LIMIT) {
-    return res.status(403).json({ error: 'limit_reached', remaining: 0 })
+  if (!isDev) {
+    const sessionUsed = getCount(sessionId)
+    const ipUsed = getCount(ip)
+
+    if (sessionUsed >= FREE_LIMIT || ipUsed >= FREE_LIMIT) {
+      return res.status(403).json({ error: 'limit_reached', remaining: 0 })
+    }
+
+    if (globalUsage.date !== today()) {
+      globalUsage = { count: 0, date: today() }
+    }
+    if (globalUsage.count >= DAILY_GLOBAL_LIMIT) {
+      return res.status(503).json({ error: 'service_limit_reached' })
+    }
+    globalUsage.count++
+
+    increment(sessionId)
+    increment(ip)
   }
 
-  if (globalUsage.date !== today()) {
-    globalUsage = { count: 0, date: today() }
-  }
-  if (globalUsage.count >= DAILY_GLOBAL_LIMIT) {
-    return res.status(503).json({ error: 'service_limit_reached' })
-  }
-  globalUsage.count++
-
-  increment(sessionId)
-  increment(ip)
-  const remaining = FREE_LIMIT - (sessionUsed + 1)
+  const remaining = isDev ? 999 : FREE_LIMIT - (getCount(sessionId))
 
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
@@ -94,7 +122,8 @@ app.post('/ai/stream', async (req, res) => {
   })
 
   try {
-    await runLoop({ mode, topic, verse, verseType, lang, emit })
+    const result = await runLoop({ mode, topic, verse, verseType, lang, emit })
+    if (result?.tokens) recordTokens(result.tokens)
     await emit({ type: 'usage', remaining })
   } catch (err) {
     await emit({ type: 'error', message: err.message })

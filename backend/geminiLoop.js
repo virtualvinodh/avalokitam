@@ -5,9 +5,28 @@ const { buildGeneratePrompt, buildFixPrompt, buildFeedbackPrompt, buildPolishPro
 const { formatFeedback } = require('./errorFeedback')
 
 const MAX_ITERATIONS = 5
+const POLISH_ENABLED = false
 
+// Gemini 2.5 Pro stepped pricing: threshold based on prompt size
+const PRICE = {
+  short: { input: 1.25, output: 10.00 }, // prompts <= 200k tokens
+  long:  { input: 2.50, output: 15.00 }  // prompts >  200k tokens
+}
 
-async function callGemini (prompt, thinkingBudget = 1024) {
+function tokenCost (usage) {
+  const inputTokens = usage.promptTokenCount || 0
+  const outputAndThinking = (usage.candidatesTokenCount || 0) + (usage.thoughtsTokenCount || 0)
+  const tier = inputTokens > 200_000 ? PRICE.long : PRICE.short
+  return inputTokens / 1e6 * tier.input + outputAndThinking / 1e6 * tier.output
+}
+
+function addUsage (acc, u) {
+  acc.promptTokenCount     += u.promptTokenCount     || 0
+  acc.candidatesTokenCount += u.candidatesTokenCount || 0
+  acc.thoughtsTokenCount   += u.thoughtsTokenCount   || 0
+}
+
+async function callGemini (prompt, thinkingBudget = 1024, label = '') {
   const model = process.env.GEMINI_MODEL || 'gemini-2.5-pro'
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`
   const body = {
@@ -21,7 +40,12 @@ async function callGemini (prompt, thinkingBudget = 1024) {
       const parts = resp.data.candidates?.[0]?.content?.parts || []
       const text = parts.map(p => p.text || '').join('').trim()
         .replace(/^```[\w]*\n?/gm, '').replace(/```$/gm, '').trim()
-      return { text, thinking: '' }
+      const u = resp.data.usageMetadata || {}
+      const cost = tokenCost(u)
+      console.log(
+        `[gemini${label ? ' ' + label : ''}] in:${u.promptTokenCount || 0} out:${u.candidatesTokenCount || 0} think:${u.thoughtsTokenCount || 0} → $${cost.toFixed(5)}`
+      )
+      return { text, thinking: '', usage: u }
     } catch (err) {
       const status = err.response?.status
       if ((status === 503 || status === 429) && attempt < RETRIES) {
@@ -114,11 +138,12 @@ async function parseXML (xmlString) {
 }
 
 
-async function sendDone (send, result) {
+async function sendDone (send, result, totals, context = null) {
   await send({ type: 'done', ...result })
   if (result.success) {
     try {
-      const { text: raw } = await callGemini(buildSandhiAndExplainPrompt(result.verse), 128)
+      const { text: raw, usage } = await callGemini(buildSandhiAndExplainPrompt(result.verse, context), 128, 'explain')
+      if (usage) addUsage(totals, usage)
       const meaningIdx = raw.indexOf('MEANING:')
       const sandhiIdx = raw.indexOf('SANDHI_SPLIT:')
       if (sandhiIdx !== -1 && meaningIdx !== -1) {
@@ -131,13 +156,29 @@ async function sendDone (send, result) {
       }
     } catch (_) {}
   }
-  return result
+  const tokens = {
+    input: totals.promptTokenCount,
+    output: totals.candidatesTokenCount,
+    thinking: totals.thoughtsTokenCount,
+    cost: tokenCost(totals)
+  }
+  await send({ type: 'tokens', ...tokens })
+  console.log(`[generation] in:${tokens.input} out:${tokens.output} think:${tokens.thinking} → $${tokens.cost.toFixed(4)}`)
+  return { ...result, tokens }
 }
 
 // emit is an optional async callback(event) for streaming
 async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
   const noop = () => {}
   const send = emit || noop
+
+  const totals = { promptTokenCount: 0, candidatesTokenCount: 0, thoughtsTokenCount: 0 }
+  const gemini = async (prompt, budget = 1024, label = '') => {
+    const result = await callGemini(prompt, budget, label)
+    if (result?.usage) addUsage(totals, result.usage)
+    return result
+  }
+  const done = (result) => sendDone(send, result, totals, originalContext)
 
   const iterations = []
   let currentVerse = null
@@ -167,7 +208,7 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
         // Already valid — nothing to fix
         const iter = { attempt: 1, verse, metreType: initialParsed.metreDetected, errors: [] }
         await send({ type: 'iteration', ...iter })
-        return sendDone(send, { success: true, verse, metreType: initialParsed.metreDetected, iterations: [iter] })
+        return done({ success: true, verse, metreType: initialParsed.metreDetected, iterations: [iter] })
       }
 
       prompt = buildFixPrompt(verse, verseType, formatFeedback(initialParsed))
@@ -182,7 +223,7 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
 
     let generated, thinking
     try {
-      ;({ text: generated, thinking } = await callGemini(prompt))
+      ;({ text: generated, thinking } = await gemini(prompt, 1024, `attempt ${attempt}`))
     } catch (err) {
       throw new Error(`Gemini API error on attempt ${attempt}: ${err.message}`)
     }
@@ -218,7 +259,11 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
     await send({ type: 'iteration', ...iter })
 
     if (errors.length === 0) {
-      // ── Polish phase ──────────────────────────────────────────────
+      return done({ success: true, verse: currentVerse, metreType, iterations })
+    }
+
+    if (POLISH_ENABLED && errors.length === 0) {
+      // ── Polish phase (toggle POLISH_ENABLED at top of file to re-enable) ──
       const validVerse = currentVerse
       const validMetreType = metreType
 
@@ -227,8 +272,8 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
       await send({ type: 'thinking', attempt: nextAttempt, prompt: polishPrompt })
 
       let polished, polishThinking
-      try { ;({ text: polished, thinking: polishThinking } = await callGemini(polishPrompt)) } catch (_) {
-        return sendDone(send, { success: true, verse: validVerse, metreType: validMetreType, iterations })
+      try { ;({ text: polished, thinking: polishThinking } = await gemini(polishPrompt, 1024, 'polish')) } catch (_) {
+        return done({ success: true, verse: validVerse, metreType: validMetreType, iterations })
       }
 
       await send({ type: 'checking', attempt: nextAttempt, verse: polished, thinking: polishThinking })
@@ -238,7 +283,7 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
         pXml = await callParser(polished, lang)
         pParsed = await parseXML(pXml)
       } catch (_) {
-        return sendDone(send, { success: true, verse: validVerse, metreType: validMetreType, iterations })
+        return done({ success: true, verse: validVerse, metreType: validMetreType, iterations })
       }
 
       const pIter = { attempt: nextAttempt, verse: polished, metreType: pParsed.metreDetected, errors: pParsed.violations, xml: pXml }
@@ -246,7 +291,7 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
       await send({ type: 'iteration', ...pIter })
 
       if (pParsed.violations.length === 0) {
-        return sendDone(send, { success: true, verse: polished, metreType: pParsed.metreDetected, iterations })
+        return done({ success: true, verse: polished, metreType: pParsed.metreDetected, iterations })
       }
 
       // Polish broke metre — try up to 3 fix attempts
@@ -258,7 +303,7 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
         await send({ type: 'thinking', attempt: nextAttempt, prompt: fixPrompt })
 
         let fixed, fixThinking
-        try { ;({ text: fixed, thinking: fixThinking } = await callGemini(fixPrompt)) } catch (_) { break }
+        try { ;({ text: fixed, thinking: fixThinking } = await gemini(fixPrompt, 1024, `fix-${f}`)) } catch (_) { break }
 
         await send({ type: 'checking', attempt: nextAttempt, verse: fixed, thinking: fixThinking })
 
@@ -273,7 +318,7 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
         await send({ type: 'iteration', ...fIter })
 
         if (fParsed.violations.length === 0) {
-          return sendDone(send, { success: true, verse: fixed, metreType: fParsed.metreDetected, iterations })
+          return done({ success: true, verse: fixed, metreType: fParsed.metreDetected, iterations })
         }
 
         fixVerse = fixed
@@ -281,7 +326,7 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
       }
 
       // Could not recover polish — fall back to pre-polish valid verse
-      return sendDone(send, { success: true, verse: validVerse, metreType: validMetreType, iterations })
+      return done({ success: true, verse: validVerse, metreType: validMetreType, iterations })
     }
 
     if (attempt < MAX_ITERATIONS) {
@@ -297,7 +342,7 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
     iterations,
     message: `Could not produce a fully valid verse after ${MAX_ITERATIONS} attempts. Best result shown.`
   }
-  return sendDone(send, result)
+  return done(result)
 }
 
 module.exports = { runLoop }

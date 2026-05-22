@@ -96,6 +96,33 @@
             </template>
           </q-btn>
 
+          <!-- Token stats (visible only with ?dev=1) -->
+          <q-expansion-item
+            v-if="showStats && usageStats"
+            dense
+            icon="bar_chart"
+            label="Token Usage"
+            header-class="text-caption text-grey-6 q-pl-none"
+            class="q-mb-sm"
+          >
+            <div class="text-caption q-pa-xs" style="font-family:monospace; line-height:1.8">
+              <div class="text-grey-5 q-mb-xs">This generation</div>
+              <div v-if="genTokens">
+                in: {{ genTokens.input.toLocaleString() }} &nbsp; out: {{ genTokens.output.toLocaleString() }} &nbsp; think: {{ genTokens.thinking.toLocaleString() }}
+                &nbsp;·&nbsp; <span class="text-green-7">${{ genTokens.cost.toFixed(4) }}</span>
+              </div>
+              <div v-else class="text-grey-6">—</div>
+              <q-separator class="q-my-xs" />
+              <div class="text-grey-5 q-mb-xs">Daily · Monthly · Overall</div>
+              <div v-for="(period, key) in { Today: usageStats.daily, Month: usageStats.monthly, Total: usageStats.overall }" :key="key">
+                <span class="text-grey-6" style="display:inline-block;width:42px">{{ key }}</span>
+                {{ period.input.toLocaleString() }} / {{ period.output.toLocaleString() }} / {{ period.thinking.toLocaleString() }}
+                &nbsp;·&nbsp; {{ period.generations }} gen
+                &nbsp;·&nbsp; <span class="text-green-7">${{ (period.cost || 0).toFixed(4) }}</span>
+              </div>
+            </div>
+          </q-expansion-item>
+
           <!-- Error -->
           <q-banner v-if="errorMsg" class="bg-red-8 text-white tamil q-mt-sm" dense rounded>
             <template v-slot:avatar><q-icon name="error" /></template>
@@ -127,9 +154,9 @@
             </div>
             <div class="q-pa-sm rounded-borders row items-center" style="background:#f0f4ff">
               <q-spinner-dots color="blue-8" size="24px" class="q-mr-sm" />
-              <span class="tamil text-grey-7">Gemini பா இயற்றுகிறது...</span>
+              <span class="tamil text-grey-7">பா இயற்றப்படுகிறது...</span>
             </div>
-            <q-expansion-item dense label="AI-க்கு அனுப்பிய உள்ளீடு" header-class="text-caption text-grey-6 q-pl-none" class="q-mt-xs">
+            <q-expansion-item v-if="showStats" dense label="AI-க்கு அனுப்பிய உள்ளீடு" header-class="text-caption text-grey-6 q-pl-none" class="q-mt-xs">
               <div class="q-pa-sm rounded-borders text-caption" style="background:#eef2ff; white-space:pre-wrap; font-family:monospace; font-size:0.75em; max-height:200px; overflow-y:auto">{{ currentThinking.prompt }}</div>
             </q-expansion-item>
           </div>
@@ -188,6 +215,11 @@
                 <div v-if="sandhi" class="tamil q-pa-sm q-mb-sm rounded-borders" style="background:#f5f5f5; white-space:pre-line; font-size:1.05em; line-height:1.8; color:#333">{{ sandhi }}</div>
                 <!-- 3. Meaning -->
                 <div v-if="explanation" class="tamil q-pa-sm q-mb-sm text-grey-7" style="font-size:0.95em; line-height:1.7">{{ explanation }}</div>
+                <!-- Loading sandhi + explanation -->
+                <div v-if="loadingExtra && !explanation" class="row items-center q-pa-sm q-mb-sm text-grey-5">
+                  <q-spinner-dots size="18px" class="q-mr-sm" />
+                  <span class="tamil text-caption">விளக்கம் உருவாக்கப்படுகிறது...</span>
+                </div>
                 <!-- 4. ScansionAll -->
                 <div v-if="iter.parsedResult" class="q-pa-sm rounded-borders" style="background:#f5f5f5; overflow-x:auto">
                   <scansion-all
@@ -216,7 +248,7 @@
               </div>
 
               <!-- Debug: prompt sent to AI -->
-              <q-expansion-item v-if="iter.prompt" dense label="AI-க்கு அனுப்பிய உள்ளீடு" header-class="text-caption text-grey-5 q-pl-none" class="q-mt-xs">
+              <q-expansion-item v-if="showStats && iter.prompt" dense label="AI-க்கு அனுப்பிய உள்ளீடு" header-class="text-caption text-grey-5 q-pl-none" class="q-mt-xs">
                 <div class="q-pa-sm rounded-borders text-caption" style="background:#f5f5f5; white-space:pre-wrap; font-family:monospace; font-size:0.75em; max-height:200px; overflow-y:auto">{{ iter.prompt }}</div>
               </q-expansion-item>
 
@@ -287,7 +319,10 @@ export default {
       currentChecking: null,
       remaining: null,
       explanation: null,
-      sandhi: null
+      sandhi: null,
+      loadingExtra: false,
+      genTokens: null,
+      usageStats: null
     }
   },
   mounted () {
@@ -299,6 +334,15 @@ export default {
       .then(r => r.json())
       .then(d => { this.remaining = d.remaining })
       .catch(() => {})
+    this.fetchStats()
+  },
+  computed: {
+    devToken () {
+      return this.$route.query.dev || null
+    },
+    showStats () {
+      return !!this.devToken
+    }
   },
   watch: {
     mode () {
@@ -315,6 +359,8 @@ export default {
       this.currentChecking = null
       this.explanation = null
       this.sandhi = null
+      this.loadingExtra = false
+      this.genTokens = null
     },
     async run () {
       this.reset()
@@ -327,9 +373,11 @@ export default {
       }
 
       try {
+        const headers = { 'Content-Type': 'application/json', 'X-Session-Id': getOrCreateSessionId() }
+        if (this.devToken) headers['X-Dev-Token'] = this.devToken
         const response = await fetch(AI_BACKEND + '/ai/stream', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Session-Id': getOrCreateSessionId() },
+          headers,
           body: JSON.stringify(body)
         })
 
@@ -386,10 +434,15 @@ export default {
               this.finalVerse = event.verse
               this.success = event.success
               this.loading = false
+              if (event.success) this.loadingExtra = true
+            } else if (event.type === 'tokens') {
+              this.genTokens = event
+              this.fetchStats()
             } else if (event.type === 'sandhi') {
               this.sandhi = event.text
             } else if (event.type === 'explanation') {
               this.explanation = event.text
+              this.loadingExtra = false
             } else if (event.type === 'usage') {
               this.remaining = event.remaining
             } else if (event.type === 'error') {
@@ -402,6 +455,12 @@ export default {
         this.errorMsg = 'AI backend-ஐ அணுக முடியவில்லை. Backend இயங்குகிறதா என சரிபாருங்கள்.'
         this.loading = false
       }
+    },
+    fetchStats () {
+      fetch(AI_BACKEND + '/health')
+        .then(r => r.json())
+        .then(d => { this.usageStats = d.stats })
+        .catch(() => {})
     },
     safeVenpaLastWord (result) {
       try { return this.vepaLastWordClass(result) } catch (e) { return 'None' }
