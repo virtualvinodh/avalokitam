@@ -1,9 +1,9 @@
 <template>
   <q-page>
-    <q-splitter v-model="splitterModel" :horizontal="$q.platform.is.mobile">
+    <div :class="$q.screen.lt.md ? 'column' : 'row no-wrap'">
 
       <!-- LEFT: inputs -->
-      <template v-slot:before>
+      <div :style="$q.screen.lt.md ? '' : 'width:35%;min-width:280px;max-width:420px'">
         <div class="q-ma-md">
 
           <div class="text-h6 tamil q-mb-md" style="color:#555">வெண்பா இயற்றுக</div>
@@ -130,10 +130,10 @@
           </q-banner>
 
         </div>
-      </template>
+      </div>
 
       <!-- RIGHT: iteration progress + result -->
-      <template v-slot:after>
+      <div class="col">
         <div class="q-ma-md">
 
           <!-- Empty state -->
@@ -275,8 +275,8 @@
           </div>
 
         </div>
-      </template>
-    </q-splitter>
+      </div>
+    </div>
   </q-page>
 </template>
 
@@ -305,7 +305,6 @@ export default {
   mixins: [LinkMixin],
   data () {
     return {
-      splitterModel: 35,
       mode: 'generate',
       verseType: 'venpaa',
       topic: '',
