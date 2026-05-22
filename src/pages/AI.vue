@@ -214,7 +214,9 @@
                 </div>
                 <!-- 2. Sandhi split -->
                 <div v-if="sandhi" class="tamil q-pa-sm q-mb-sm rounded-borders" style="background:#f5f5f5; white-space:pre-line; font-size:1.05em; line-height:1.8; color:#333">{{ sandhi }}</div>
-                <!-- 3. Meaning -->
+                <!-- 3. Literal -->
+                <div v-if="literal" class="tamil q-pa-sm q-mb-xs text-grey-6" style="font-size:0.9em; line-height:1.7; font-style:italic">{{ literal }}</div>
+                <!-- 4. Meaning -->
                 <div v-if="explanation" class="tamil q-pa-sm q-mb-sm text-grey-7" style="font-size:0.95em; line-height:1.7">{{ explanation }}</div>
                 <!-- Loading sandhi + explanation -->
                 <div v-if="loadingExtra && !explanation" class="row items-center q-pa-sm q-mb-sm text-grey-5">
@@ -320,6 +322,7 @@ export default {
       remaining: null,
       explanation: null,
       sandhi: null,
+      literal: null,
       loadingExtra: false,
       genTokens: null,
       usageStats: null
@@ -362,6 +365,7 @@ export default {
       this.currentChecking = null
       this.explanation = null
       this.sandhi = null
+      this.literal = null
       this.loadingExtra = false
       this.genTokens = null
     },
@@ -444,6 +448,8 @@ export default {
               this.fetchStats()
             } else if (event.type === 'sandhi') {
               this.sandhi = event.text
+            } else if (event.type === 'literal') {
+              this.literal = event.text
             } else if (event.type === 'explanation') {
               this.explanation = event.text
               this.loadingExtra = false

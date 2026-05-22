@@ -144,9 +144,17 @@ async function sendDone (send, result, totals, context = null) {
     try {
       const { text: raw, usage } = await callGemini(buildSandhiAndExplainPrompt(result.verse, context), 128, 'explain')
       if (usage) addUsage(totals, usage)
-      const meaningIdx = raw.indexOf('MEANING:')
       const sandhiIdx = raw.indexOf('SANDHI_SPLIT:')
-      if (sandhiIdx !== -1 && meaningIdx !== -1) {
+      const literalIdx = raw.indexOf('LITERAL:')
+      const meaningIdx = raw.indexOf('MEANING:')
+      if (sandhiIdx !== -1 && literalIdx !== -1 && meaningIdx !== -1) {
+        const sandhi = raw.slice(sandhiIdx + 'SANDHI_SPLIT:'.length, literalIdx).trim()
+        const literal = raw.slice(literalIdx + 'LITERAL:'.length, meaningIdx).trim()
+        const meaning = raw.slice(meaningIdx + 'MEANING:'.length).trim()
+        if (sandhi) await send({ type: 'sandhi', text: sandhi })
+        if (literal) await send({ type: 'literal', text: literal })
+        if (meaning) await send({ type: 'explanation', text: meaning })
+      } else if (sandhiIdx !== -1 && meaningIdx !== -1) {
         const sandhi = raw.slice(sandhiIdx + 'SANDHI_SPLIT:'.length, meaningIdx).trim()
         const meaning = raw.slice(meaningIdx + 'MEANING:'.length).trim()
         if (sandhi) await send({ type: 'sandhi', text: sandhi })

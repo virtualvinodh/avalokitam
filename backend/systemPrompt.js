@@ -188,15 +188,19 @@ The following Tamil verse has been composed and verified metrically:
 ${contextLine}
 ${verse}
 
-Provide two things:
+Provide three things:
 
 1. SANDHI_SPLIT: Rewrite the verse with all sandhi (சந்தி) separated so each individual word is visible. Preserve the exact same number of lines.
 
-2. MEANING: Explain the verse's meaning in simple modern Tamil in 2-3 sentences, connecting it to the subject above. No scansion analysis, no line-by-line breakdown, no English.
+2. LITERAL: A single sentence in simple modern Tamil that closely follows what the verse literally says — paraphrase the words without adding interpretation or outside knowledge.
+
+3. MEANING: Explain the deeper meaning of the verse in simple modern Tamil in 2-3 sentences by using the background context to identify the specific figures and symbols the literal words represent. Base the narrative flow entirely on the verse itself.. Do not introduce any  details from the context that are not directly tied to a word or image in the verse. No scansion analysis, no line-by-line breakdown, no English. No self-referencing to the poem as "this poem" etc. You MUST NOT use phrases like "இவ்வரிகளில்" (In these lines), "இப்பாடலில்" (In this song).
 
 Output in exactly this format and nothing else:
 SANDHI_SPLIT:
 <sandhi-split verse>
+LITERAL:
+<one-sentence literal paraphrase>
 MEANING:
 <Tamil explanation>`
 }
