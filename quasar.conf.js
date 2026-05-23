@@ -8,8 +8,7 @@ module.exports = function (ctx) {
     // https://quasar.dev/quasar-cli/cli-documentation/boot-files
     boot: [
       'i18n',
-      'axios',
-      'analytics'
+      'axios'
     ],
 
     // https://quasar.dev/quasar-cli/quasar-conf-js#Property%3A-css
@@ -75,14 +74,54 @@ module.exports = function (ctx) {
             formatter: require('eslint').CLIEngine.getFormatter('stylish')
           }
         })
+        // Force dart-sass instead of node-sass (node-sass doesn't run on arm64/Node 22)
+        // Also patch the quote() function which Quasar v1's sass incorrectly calls with numbers
+        const sass = require('sass')
+        const sassOverrides = {
+          implementation: sass,
+          sassOptions: {
+            functions: {
+              'quote($val)': function (val) {
+                const str = val instanceof sass.types.Number
+                  ? val.getValue().toString()
+                  : val instanceof sass.types.String ? val.getValue() : String(val)
+                return new sass.types.String('"' + str + '"')
+              }
+            }
+          }
+        }
+        function applyToRule (rule) {
+          if (!rule) return
+          if (rule.use) {
+            rule.use.forEach(u => {
+              if (u.loader && u.loader.includes('sass-loader')) {
+                u.options = Object.assign(u.options || {}, sassOverrides)
+              }
+            })
+          }
+          if (rule.oneOf) rule.oneOf.forEach(applyToRule)
+        }
+        cfg.module.rules.forEach(applyToRule)
+        // Log found sass-loader instances for debugging
+        let found = 0
+        cfg.module.rules.forEach(r => {
+          if (r.use) r.use.forEach(u => { if (u.loader && u.loader.includes('sass-loader')) found++ })
+          if (r.oneOf) r.oneOf.forEach(r2 => { if (r2.use) r2.use.forEach(u => { if (u.loader && u.loader.includes('sass-loader')) found++ }) })
+        })
+        console.log('[quasar.conf] sass-loader rules patched:', found)
       }
     },
 
     // https://quasar.dev/quasar-cli/quasar-conf-js#Property%3A-devServer
     devServer: {
-      // https: true,
-      // port: 8080,
-      open: true // opens browser window automatically
+      port: 9000,
+      open: true,
+      proxy: {
+        '/api.php': {
+          target: 'http://localhost:8080',
+          changeOrigin: true
+        }
+      }
     },
 
     // animations: 'all', // --- includes all animations

@@ -47,6 +47,14 @@
             <q-item-label>ஆராய்க</q-item-label>
           </q-item-section>
         </q-item>
+        <q-item class="tamil" to="/ai" active-class="bg-grey-4">
+          <q-item-section avatar>
+            <q-icon name="stars" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>வெண்பா AI</q-item-label>
+          </q-item-section>
+        </q-item>
         <q-item class="tamil" to="/search" active-class="bg-grey-4">
           <q-item-section avatar>
             <q-icon name="search" />

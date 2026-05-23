@@ -54,6 +54,13 @@ const routes = [
     ]
   },
   {
+    path: '/ai',
+    component: () => import('layouts/MyLayout.vue'),
+    children: [
+      { path: '', component: () => import('pages/AI.vue') }
+    ]
+  },
+  {
     path: '/about',
     component: () => import('layouts/MyLayout.vue'),
     children: [
