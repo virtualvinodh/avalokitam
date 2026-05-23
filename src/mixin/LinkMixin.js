@@ -489,10 +489,11 @@ export const LinkMixin = {
     },
     convertAsync: function (text) {
       return new Promise(resolve => {
+        var normalizedText = text.replace(/—/g, '-')
         var data = {
-          'verse': text
+          'verse': normalizedText
         }
-        this.apiCall.post('/api.php?verse=' + text.replace(/\n/g, '@@@@') + '', data)
+        this.apiCall.post('/api.php?verse=' + normalizedText.replace(/\n/g, '@@@@') + '', data)
           .then(function (response) {
             // // console.dirxml(response.data)
             resolve(response.data)

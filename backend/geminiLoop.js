@@ -59,7 +59,7 @@ async function callGemini (prompt, thinkingLevel = 'minimal', label = '') {
 
 async function callParser (verse, lang = 'ta') {
   const params = new URLSearchParams()
-  params.append('verse', verse)
+  params.append('verse', verse.replace(/—/g, '-'))
   params.append('lang', lang)
   params.append('kurilu', '0')
   params.append('vencheck', '0')
