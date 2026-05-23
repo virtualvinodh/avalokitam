@@ -319,14 +319,12 @@
               </template>
               AI வெண்பா உருவாக்கல் ஒவ்வொன்றும் எங்களுக்கு சிறிய செலவை ஏற்படுத்துகிறது. இதை தொடர உதவ விரும்புகிறீர்களா?
               <template v-slot:action>
-                <q-btn
-                  flat dense no-caps
-                  label="நன்கொடை அளிக்க"
-                  icon="volunteer_activism"
-                  class="tamil text-blue-9"
-                  href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=DLDU4TRF7KCNC&source=url"
-                  target="_blank"
-                />
+                <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top" class="q-mr-sm">
+                  <input type="hidden" name="cmd" value="_s-xclick" />
+                  <input type="hidden" name="hosted_button_id" value="DLDU4TRF7KCNC" />
+                  <input type="image" src="https://www.paypalobjects.com/en_GB/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
+                  <img alt="" border="0" src="https://www.paypal.com/en_IN/i/scr/pixel.gif" width="1" height="1" />
+                </form>
                 <q-btn flat dense icon="close" class="text-blue-7" @click="showDonateBanner = false" />
               </template>
             </q-banner>
