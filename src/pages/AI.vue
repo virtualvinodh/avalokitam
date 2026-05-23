@@ -164,7 +164,7 @@
             <div class="tamil text-h6">
               {{ mode === 'generate' ? 'தலைப்பு கொடுத்து பா இயற்றுங்கள்' : 'பிழையுள்ள பாவை இட்டு திருத்துங்கள்' }}
             </div>
-            <div class="tamil text-caption q-mt-sm text-grey-6">AI பா இயற்றும். யாப்பு பகுப்பாளர் சரிபார்க்கும். 5 முறை வரை மீண்டும் முயலும்.</div>
+            <div class="tamil text-caption q-mt-sm text-grey-6">AI வெண்பா இயற்றும்; யாப்பு பகுப்பாளர் சரிபார்க்கும்; பிழையிருந்தால் திருத்தி மீளும்.</div>
           </div>
 
           <!-- Live status: Gemini thinking -->
