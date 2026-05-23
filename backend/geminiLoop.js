@@ -26,12 +26,12 @@ function addUsage (acc, u) {
   acc.thoughtsTokenCount   += u.thoughtsTokenCount   || 0
 }
 
-async function callGemini (prompt, thinkingBudget = 1024, label = '') {
+async function callGemini (prompt, thinkingLevel = 'minimal', label = '') {
   const model = process.env.GEMINI_MODEL || 'gemini-2.5-pro'
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`
   const body = {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { thinkingConfig: { thinkingBudget } }
+    generationConfig: { thinkingConfig: { thinkingLevel } }
   }
   const RETRIES = 3
   for (let attempt = 1; attempt <= RETRIES; attempt++) {
@@ -142,7 +142,7 @@ async function sendDone (send, result, totals, context = null) {
   await send({ type: 'done', ...result })
   if (result.success) {
     try {
-      const { text: raw, usage } = await callGemini(buildSandhiAndExplainPrompt(result.verse, context), 128, 'explain')
+      const { text: raw, usage } = await callGemini(buildSandhiAndExplainPrompt(result.verse, context), 'minimal', 'explain')
       if (usage) addUsage(totals, usage)
       const sandhiIdx = raw.indexOf('SANDHI_SPLIT:')
       const literalIdx = raw.indexOf('LITERAL:')
@@ -181,8 +181,8 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
   const send = emit || noop
 
   const totals = { promptTokenCount: 0, candidatesTokenCount: 0, thoughtsTokenCount: 0 }
-  const gemini = async (prompt, budget = 1024, label = '') => {
-    const result = await callGemini(prompt, budget, label)
+  const gemini = async (prompt, level = 'minimal', label = '') => {
+    const result = await callGemini(prompt, level, label)
     if (result?.usage) addUsage(totals, result.usage)
     return result
   }
@@ -231,7 +231,7 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
 
     let generated, thinking
     try {
-      ;({ text: generated, thinking } = await gemini(prompt, 1024, `attempt ${attempt}`))
+      ;({ text: generated, thinking } = await gemini(prompt, 'minimal', `attempt ${attempt}`))
     } catch (err) {
       throw new Error(`Gemini API error on attempt ${attempt}: ${err.message}`)
     }
@@ -280,7 +280,7 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
       await send({ type: 'thinking', attempt: nextAttempt, prompt: polishPrompt })
 
       let polished, polishThinking
-      try { ;({ text: polished, thinking: polishThinking } = await gemini(polishPrompt, 1024, 'polish')) } catch (_) {
+      try { ;({ text: polished, thinking: polishThinking } = await gemini(polishPrompt, 'low', 'polish')) } catch (_) {
         return done({ success: true, verse: validVerse, metreType: validMetreType, iterations })
       }
 
@@ -311,7 +311,7 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
         await send({ type: 'thinking', attempt: nextAttempt, prompt: fixPrompt })
 
         let fixed, fixThinking
-        try { ;({ text: fixed, thinking: fixThinking } = await gemini(fixPrompt, 1024, `fix-${f}`)) } catch (_) { break }
+        try { ;({ text: fixed, thinking: fixThinking } = await gemini(fixPrompt, 'low', `fix-${f}`)) } catch (_) { break }
 
         await send({ type: 'checking', attempt: nextAttempt, verse: fixed, thinking: fixThinking })
 

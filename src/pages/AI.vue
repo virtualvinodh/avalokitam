@@ -186,14 +186,15 @@
             <div v-for="(iter, i) in iterations" :key="i" class="q-mb-md">
               <div class="row items-center q-mb-xs">
                 <q-chip
-                  :color="iter.errors && iter.errors.length === 0 ? 'positive' : 'orange-8'"
+                  :color="iter.parserError ? 'grey-6' : iter.errors && iter.errors.length === 0 ? 'positive' : 'orange-8'"
                   text-color="white"
                   size="sm"
                   class="tamil"
-                  :icon="iter.errors && iter.errors.length === 0 ? 'check_circle' : 'sync'"
+                  :icon="iter.parserError ? 'warning' : iter.errors && iter.errors.length === 0 ? 'check_circle' : 'sync'"
                 >
                   முயற்சி {{ iter.attempt }}
-                  <span v-if="iter.errors && iter.errors.length === 0"> — சரியானது</span>
+                  <span v-if="iter.parserError"> — பகுப்பாய்வு தோல்வி</span>
+                  <span v-else-if="iter.errors && iter.errors.length === 0"> — சரியானது</span>
                   <span v-else-if="iter.errors"> — {{ iter.errors.length }} பிழை</span>
                 </q-chip>
                 <q-chip v-if="iter.metreType" color="grey-7" text-color="white" size="sm" class="tamil q-ml-xs">
@@ -207,17 +208,26 @@
                 <div class="rounded-borders q-mb-sm" style="background:#1a1a1a">
                   <div class="tamil q-pa-md text-white" style="white-space:pre-line; font-size:1.15em; line-height:1.9">{{ finalVerse }}</div>
                   <div class="row q-px-sm q-pb-sm">
-                    <q-btn flat dense dark icon="content_copy" label="நகலெடு" class="tamil text-grey-4" size="sm" @click="copyVerse" />
-                    <q-btn flat dense dark icon="analytics" label="ஆய்விடம்" class="tamil text-grey-4" size="sm" @click="openInAnalyzer" />
+                    <q-btn flat dense dark icon="file_copy" label="நகலெடு" class="tamil text-grey-4" size="sm" @click="copyVerse" />
+                    <q-btn flat dense dark icon="find_in_page" label="ஆராய்க" class="tamil text-grey-4" size="sm" @click="openInAnalyzer" />
                     <q-btn flat dense dark icon="refresh" label="மீண்டும்" class="tamil text-grey-4" size="sm" @click="run" />
                   </div>
                 </div>
                 <!-- 2. Sandhi split -->
-                <div v-if="sandhi" class="tamil q-pa-sm q-mb-sm rounded-borders" style="background:#f5f5f5; white-space:pre-line; font-size:1.05em; line-height:1.8; color:#333">{{ sandhi }}</div>
+                <div v-if="sandhi" class="q-mb-sm">
+                  <div class="text-caption text-grey-5 tamil q-px-sm q-pt-xs">சந்திபிரித்த செய்யுள்</div>
+                  <div class="tamil q-pa-sm rounded-borders" style="background:#f5f5f5; white-space:pre-line; font-size:1.05em; line-height:1.8; color:#333">{{ sandhi }}</div>
+                </div>
                 <!-- 3. Literal -->
-                <div v-if="literal" class="tamil q-pa-sm q-mb-xs text-grey-6" style="font-size:0.9em; line-height:1.7; font-style:italic">{{ literal }}</div>
+                <div v-if="literal" class="q-mb-xs">
+                  <div class="text-caption text-grey-5 tamil q-px-sm q-pt-xs">பொழிப்புரை</div>
+                  <div class="tamil q-pa-sm text-grey-6" style="font-size:0.9em; line-height:1.7; font-style:italic">{{ literal }}</div>
+                </div>
                 <!-- 4. Meaning -->
-                <div v-if="explanation" class="tamil q-pa-sm q-mb-sm text-grey-7" style="font-size:0.95em; line-height:1.7">{{ explanation }}</div>
+                <div v-if="explanation" class="q-mb-sm">
+                  <div class="text-caption text-grey-5 tamil q-px-sm q-pt-xs">தெளிவுரை</div>
+                  <div class="tamil q-pa-sm text-grey-7" style="font-size:0.95em; line-height:1.7">{{ explanation }}</div>
+                </div>
                 <!-- Loading sandhi + explanation -->
                 <div v-if="loadingExtra && !explanation" class="row items-center q-pa-sm q-mb-sm text-grey-5">
                   <q-spinner-dots size="18px" class="q-mr-sm" />
@@ -270,8 +280,8 @@
               <div class="text-caption q-mb-xs">சிறந்த முயற்சி — சில பிழைகள் இருக்கலாம்</div>
               <div class="tamil" style="white-space:pre-line; font-size:1.15em; line-height:1.9">{{ finalVerse }}</div>
               <template v-slot:action>
-                <q-btn flat dense icon="content_copy" label="நகலெடு" class="tamil" @click="copyVerse" />
-                <q-btn flat dense icon="analytics" label="ஆய்விடம்" class="tamil" @click="openInAnalyzer" />
+                <q-btn flat dense icon="file_copy" label="நகலெடு" class="tamil" @click="copyVerse" />
+                <q-btn flat dense icon="find_in_page" label="ஆராய்க" class="tamil" @click="openInAnalyzer" />
                 <q-btn flat dense icon="refresh" label="மீண்டும்" class="tamil" @click="run" />
               </template>
             </q-banner>
@@ -288,7 +298,15 @@ import ScansionAll from '../components/ScansionAll'
 import { LinkMixin } from '../mixin/LinkMixin'
 
 function copyToClipboard (text) {
-  return navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.resolve()
+  const el = document.createElement('textarea')
+  el.value = text
+  el.style.cssText = 'position:fixed;top:0;left:0;opacity:0'
+  document.body.appendChild(el)
+  el.focus()
+  el.select()
+  const ok = document.execCommand('copy')
+  document.body.removeChild(el)
+  return ok ? Promise.resolve() : Promise.reject(new Error('copy failed'))
 }
 
 const AI_BACKEND = 'http://localhost:3001'
@@ -478,6 +496,7 @@ export default {
     copyVerse () {
       copyToClipboard(this.finalVerse)
         .then(() => this.$q.notify({ message: 'நகலெடுக்கப்பட்டது', color: 'grey-8', position: 'top' }))
+        .catch(() => this.$q.notify({ message: 'நகலெடுக்க முடியவில்லை', color: 'red-8', position: 'top' }))
     },
     openInAnalyzer () {
       this.$router.push({ path: '/analyzer', query: { text: this.finalVerse } })
