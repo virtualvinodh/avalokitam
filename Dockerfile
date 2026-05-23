@@ -22,9 +22,9 @@ RUN a2enmod proxy proxy_http rewrite headers && \
 COPY docker/vhost.conf /etc/apache2/sites-enabled/000-default.conf
 
 # ── PHP files + SPA ───────────────────────────────────────────────────────
-COPY dist/*.php  /var/www/html/
-COPY dist/*.txt  /var/www/html/
-COPY dist/spa    /var/www/html/
+COPY phpbackend/*.php /var/www/html/
+COPY phpbackend/*.txt /var/www/html/
+COPY dist/spa         /var/www/html/
 
 # ── Node.js AI backend ────────────────────────────────────────────────────
 COPY backend/package.json backend/package-lock.json* /app/
