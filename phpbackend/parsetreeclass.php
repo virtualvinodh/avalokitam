@@ -765,7 +765,7 @@ class ProsodyParseTree
 			}
 		}
 
-		$Bond = "";
+		$Bond = array();
 
 		/*
 		 * Compare the Word Class & Syllable Class to calculate the Talai
@@ -829,7 +829,7 @@ class ProsodyParseTree
 
 			$SyllableBond [] = $Bond;
 
-			$Bond = "";
+			$Bond = array();
 		}
 
 		return $SyllableBond;
