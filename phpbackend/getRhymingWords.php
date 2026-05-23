@@ -18,6 +18,36 @@ $sourceMatra = $ptreeA->GetMatraCount($source);
 $todaiSel    = $_GET['todaiSel'];
 $todaiSelN   = (int)$_GET['todaiSelN'];
 
+// ── Bond lookup (replaces per-word ProsodyParseTree in talai filter) ─────
+function getBond($srcVpLat, $candVpLat) {
+    static $firstAsaiOf = null;
+    if ($firstAsaiOf === null) {
+        $tmp = new ProsodyParseTree("", "", "");
+        $firstAsaiOf = array();
+        foreach ($tmp->WordType as $seq => $vp) {
+            if (!isset($firstAsaiOf[$vp]))
+                $firstAsaiOf[$vp] = (substr($seq, 0, 4) == 'nE_r') ? 'nE_r' : 'nirY';
+        }
+    }
+    $class2 = isset($firstAsaiOf[$candVpLat]) ? $firstAsaiOf[$candVpLat] : null;
+    if (!$class2) return '';
+    if (substr($srcVpLat, -2) == 'mA'     && $class2 == 'nE_r') return 'நேரொன்றிய ஆசிரியத்தளை';
+    if (substr($srcVpLat, -6) == 'viLa_m' && $class2 == 'nirY') return 'நிரையொன்றிய ஆசிரியத்தளை';
+    if ((substr($srcVpLat, -2) == 'mA'     && $class2 == 'nirY') ||
+        (substr($srcVpLat, -6) == 'viLa_m' && $class2 == 'nE_r')) return 'இயற்சீர் வெண்டளை';
+    if ((substr($srcVpLat, -4) == 'kA_y'   && $class2 == 'nE_r') ||
+        (substr($srcVpLat, -2) == 'pU'     && $class2 == 'nE_r')) return 'வெண்சீர் வெண்டளை';
+    if ((substr($srcVpLat, -4) == 'kaVi'   && $class2 == 'nirY') ||
+        (substr($srcVpLat, -6) == 'niZa_l' && $class2 == 'nirY') ||
+        (substr($srcVpLat, -6) == 'NiZa_l' && $class2 == 'nirY')) return 'ஒன்றிய வஞ்சித்தளை';
+    if ((substr($srcVpLat, -4) == 'kaVi'   && $class2 == 'nE_r') ||
+        (substr($srcVpLat, -6) == 'niZa_l' && $class2 == 'nE_r') ||
+        (substr($srcVpLat, -6) == 'NiZa_l' && $class2 == 'nE_r')) return 'ஒன்றா வஞ்சித்தளை';
+    if ((substr($srcVpLat, -4) == 'kA_y'   && $class2 == 'nirY') ||
+        (substr($srcVpLat, -2) == 'pU'     && $class2 == 'nirY')) return 'கலித்தளை';
+    return '';
+}
+
 // Build a sub-index from wordlist. Each APC key holds one todai type's buckets,
 // storing full rows so requests never need to load more than one index.
 function buildSubIndex($type, $n, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS) {
@@ -127,7 +157,8 @@ if ($_GET['vaypatuSel'] == "அதே வாய்ப்பாடு") {
 }
 
 // ── Main filter ───────────────────────────────────────────────────────────
-$matchList = array();
+$matchList    = array();
+$matchVpLat   = array(); // parallel: latin vaypatu for each matched word (used by talai filter)
 
 foreach ($candidates as $row) {
     list($wordL, $word, $vaypatu, $wordMatra) = $row;
@@ -169,8 +200,10 @@ foreach ($candidates as $row) {
     elseif  ($vp == "அதே வாய்ப்பாடு")     $vpOk = ($formula == $vaypatu);
     else                                    $vpOk = ($vp == $vaypatu);
 
-    if ($todaiOk && $lcOk && $mcOk && $vpOk)
-        $matchList[] = $word;
+    if ($todaiOk && $lcOk && $mcOk && $vpOk) {
+        $matchList[]  = $word;
+        $matchVpLat[] = tam2lat($vaypatu);
+    }
 }
 
 // ── Talai filter ──────────────────────────────────────────────────────────
@@ -178,10 +211,11 @@ $matchListTalai = array();
 if ($_GET['talaiSel'] == "அனைத்தும்") {
     $matchListTalai = $matchList;
 } else {
-    foreach ($matchList as $word) {
-        @$ptree = new ProsodyParseTree(lat2tam($source) . " " . $word, "", "");
-        $bond   = trim($ptree->WordBond[0]['bond']);
-        if (strpos($bond, $_GET['talaiSel']) !== false)
+    $srcPtree   = new ProsodyParseTree(lat2tam($source), 'ta', False);
+    $sourceVpLat = $srcPtree->ParseTreeRoot[0]['pA']['aTi-1']['cI_r-1']['meta'];
+    foreach ($matchList as $i => $word) {
+        $bond = getBond($sourceVpLat, $matchVpLat[$i]);
+        if ($bond !== '' && strpos($bond, $_GET['talaiSel']) !== false)
             $matchListTalai[] = $word;
     }
 }
