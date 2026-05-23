@@ -106,36 +106,36 @@ if ($todaiSel == 'etukai') {
     if ($vc !== null && strlen($source) > 2) {
         $sec = substr($source, 2, 2);
         $sk  = (substr($sec, 0, 1) == '_') ? $sec : substr($sec, 0, 1);
-        $idx = apc_fetch('idx_etukai', $found);
-        if (!$found) { $idx = buildSubIndex('etukai', 0, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apc_store('idx_etukai', $idx, 3600); }
+        $idx = apcu_fetch('idx_etukai', $found);
+        if (!$found) { $idx = buildSubIndex('etukai', 0, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apcu_store('idx_etukai', $idx, 3600); }
         $candidates = isset($idx[$vc . ':' . $sk]) ? $idx[$vc . ':' . $sk] : array();
         unset($idx);
     }
 } elseif ($todaiSel == 'monai') {
     $f  = substr($source, 0, 1);
     $mk = isset($MONAI_GROUPS[$f]) ? $MONAI_GROUPS[$f] : $f;
-    $idx = apc_fetch('idx_monai', $found);
-    if (!$found) { $idx = buildSubIndex('monai', 0, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apc_store('idx_monai', $idx, 3600); }
+    $idx = apcu_fetch('idx_monai', $found);
+    if (!$found) { $idx = buildSubIndex('monai', 0, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apcu_store('idx_monai', $idx, 3600); }
     $candidates = isset($idx[$mk]) ? $idx[$mk] : array();
     unset($idx);
 } elseif ($todaiSel == 'iyaipu') {
     $ik = substr($source, -2);
-    $idx = apc_fetch('idx_iyaipu', $found);
-    if (!$found) { $idx = buildSubIndex('iyaipu', 0, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apc_store('idx_iyaipu', $idx, 3600); }
+    $idx = apcu_fetch('idx_iyaipu', $found);
+    if (!$found) { $idx = buildSubIndex('iyaipu', 0, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apcu_store('idx_iyaipu', $idx, 3600); }
     $candidates = isset($idx[$ik]) ? $idx[$ik] : array();
     unset($idx);
 } elseif ($todaiSel == 'first' && $todaiSelN >= 1 && $todaiSelN <= 3 && strlen($source) >= $todaiSelN * 2) {
     $fk     = substr($source, 0, $todaiSelN * 2);
     $apcKey = 'idx_first_' . $todaiSelN;
-    $idx = apc_fetch($apcKey, $found);
-    if (!$found) { $idx = buildSubIndex('first', $todaiSelN, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apc_store($apcKey, $idx, 3600); }
+    $idx = apcu_fetch($apcKey, $found);
+    if (!$found) { $idx = buildSubIndex('first', $todaiSelN, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apcu_store($apcKey, $idx, 3600); }
     $candidates = isset($idx[$fk]) ? $idx[$fk] : array();
     unset($idx);
 } elseif ($todaiSel == 'last' && $todaiSelN >= 1 && $todaiSelN <= 3 && strlen($source) >= $todaiSelN * 2) {
     $lk     = substr($source, -($todaiSelN * 2));
     $apcKey = 'idx_last_' . $todaiSelN;
-    $idx = apc_fetch($apcKey, $found);
-    if (!$found) { $idx = buildSubIndex('last', $todaiSelN, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apc_store($apcKey, $idx, 3600); }
+    $idx = apcu_fetch($apcKey, $found);
+    if (!$found) { $idx = buildSubIndex('last', $todaiSelN, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apcu_store($apcKey, $idx, 3600); }
     $candidates = isset($idx[$lk]) ? $idx[$lk] : array();
     unset($idx);
 } else {
@@ -145,8 +145,8 @@ if ($todaiSel == 'etukai') {
 }
 
 if ($useFlat) {
-    $candidates = apc_fetch('idx_flat', $found);
-    if (!$found) { $candidates = buildSubIndex('flat', 0, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apc_store('idx_flat', $candidates, 3600); }
+    $candidates = apcu_fetch('idx_flat', $found);
+    if (!$found) { $candidates = buildSubIndex('flat', 0, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apcu_store('idx_flat', $candidates, 3600); }
 }
 
 // ── Optional vaypatu formula ──────────────────────────────────────────────
