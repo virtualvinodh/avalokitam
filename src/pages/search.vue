@@ -95,7 +95,7 @@ export default {
           dhis.showProgress = false
           // console.log(response.data)
           dhis.currentPage = 1
-          dhis.resultWords = JSON.parse(response.data.trim())
+          dhis.resultWords = response.data
           // dhis.resultWords = JSON.parse(response.data)
         })
         .catch(function (error) {

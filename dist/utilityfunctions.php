@@ -1,4 +1,4 @@
-﻿<?PHP
+<?PHP
 
 /*
  * Copyright (C) 2013 Vinodh Rajan vinodh@virtualvinodh.com
