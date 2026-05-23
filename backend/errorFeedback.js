@@ -3,7 +3,13 @@ const VILAM_FEET = ['கூவிளம்', 'கருவிளம்']
 const KAY_FEET = ['தேமாங்காய்', 'புளிமாங்காய்', 'கூவிளங்காய்', 'கருவிளங்காய்']
 const ALL_VALID_FEET = [...MA_FEET, ...VILAM_FEET, ...KAY_FEET]
 
+const LAST_FOOT_TYPES = ['நாள்', 'மலர்', 'காசு', 'பிறப்பு']
+const LAST_FOOT_NIRAI = ['மலர்', 'பிறப்பு'] // start நிரை → need மா-type before them
+const LAST_FOOT_NER   = ['நாள்', 'காசு']    // start நேர்  → need விளம்/காய்-type before them
+
 function firstSylOfFoot (footName) {
+  if (LAST_FOOT_NIRAI.includes(footName)) return 'நிரை'
+  if (LAST_FOOT_NER.includes(footName)) return 'நேர்'
   const niraiFirst = ['புளிமா', 'கருவிளம்', 'புளிமாங்காய்', 'கருவிளங்காய்']
   return niraiFirst.includes(footName) ? 'நிரை' : 'நேர்'
 }
@@ -166,7 +172,16 @@ function formatFeedback (analysis) {
       ? findChainFixes(leftAnchor.footName, n, rightAnchor ? rightAnchor.footName : null)
       : []
 
-    if (n === 1) {
+    // Special case: bond error INTO the last foot (நாள்/மலர்/காசு/பிறப்பு)
+    if (rightAnchor && LAST_FOOT_TYPES.includes(rightAnchor.footName)) {
+      const lastFootName = rightAnchor.footName
+      const needMaa = LAST_FOOT_NIRAI.includes(lastFootName)
+      const validBefore = needMaa ? MA_FEET : [...VILAM_FEET, ...KAY_FEET]
+      const aEntry = flatFeet[runStart - 1]
+      const aLoc = aEntry ? `Line ${aEntry.li + 1}, Foot ${aEntry.fi + 1}` : 'preceding foot'
+      msg += `    LAST FOOT BOND: ${lastFootName} starts ${needMaa ? 'நிரை' : 'நேர்'} — the foot immediately before it must be ${needMaa ? 'மா-type' : 'விளம்/காய்-type'}.\n`
+      msg += `    Change ${aLoc} to one of: ${validBefore.join(' / ')}\n`
+    } else if (n === 1) {
       // Option A: change the chain foot (B) — already in solutions
       const solsA = solutions.map(s => s[0])
 

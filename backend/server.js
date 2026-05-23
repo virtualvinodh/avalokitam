@@ -68,10 +68,12 @@ app.get('/health', (_req, res) => {
 
 app.get('/ai/usage', (req, res) => {
   const isDev = process.env.DEV_TOKEN && req.headers['x-dev-token'] === process.env.DEV_TOKEN
-  if (isDev) return res.json({ used: 0, remaining: 999 })
+  if (isDev) return res.json({ used: 0, remaining: 999, globalRemaining: 999, globalLimit: DAILY_GLOBAL_LIMIT })
   const session = getSessionUsage(req)
-  if (!session) return res.json({ used: 0, remaining: FREE_LIMIT })
-  res.json({ used: session.count, remaining: Math.max(0, FREE_LIMIT - session.count) })
+  const globalCount = globalUsage.date === today() ? globalUsage.count : 0
+  const globalRemaining = Math.max(0, DAILY_GLOBAL_LIMIT - globalCount)
+  if (!session) return res.json({ used: 0, remaining: FREE_LIMIT, globalRemaining, globalLimit: DAILY_GLOBAL_LIMIT })
+  res.json({ used: session.count, remaining: Math.max(0, FREE_LIMIT - session.count), globalRemaining, globalLimit: DAILY_GLOBAL_LIMIT })
 })
 
 // POST /ai/stream  — SSE streaming version (generate or fix)

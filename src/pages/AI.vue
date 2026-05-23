@@ -6,7 +6,22 @@
       <div :style="$q.screen.lt.md ? '' : 'width:35%;min-width:280px;max-width:420px'">
         <div class="q-ma-md">
 
-          <div class="text-h6 tamil q-mb-md" style="color:#555">வெண்பா AI</div>
+          <div class="text-h6 tamil q-mb-sm" style="color:#555">வெண்பா AI</div>
+
+          <!-- Global daily availability banner -->
+          <q-banner
+            v-if="globalRemaining !== null"
+            dense
+            :class="globalRemaining > 20 ? 'bg-green-1 text-green-9' : globalRemaining > 0 ? 'bg-orange-1 text-orange-9' : 'bg-red-1 text-red-9'"
+            class="tamil q-mb-md rounded-borders"
+            style="font-size:0.85rem"
+          >
+            <template v-slot:avatar>
+              <q-icon :name="globalRemaining > 20 ? 'check_circle' : globalRemaining > 0 ? 'warning' : 'block'" />
+            </template>
+            <span v-if="globalRemaining > 0">இன்று <strong>{{ globalRemaining }}</strong> AI உருவாக்கல்கள் கிடைக்கின்றன</span>
+            <span v-else>இன்றைய AI உருவாக்கல்கள் முடிந்தன — நாளை மீண்டும் முயற்சிக்கவும்</span>
+          </q-banner>
 
           <!-- Mode Toggle -->
           <q-btn-toggle
@@ -50,6 +65,9 @@
               clearable
               type="textarea"
               :rows="3"
+              :maxlength="200"
+              counter
+              hint="அதிகபட்சம் 200 எழுத்துகள்"
               class="tamil q-mb-md"
               label="தலைப்பு அல்லது கருத்து"
               placeholder="எ.கா: தாய் அன்பு, மழை, நட்பு..."
@@ -64,19 +82,22 @@
               clearable
               type="textarea"
               :rows="6"
+              :maxlength="500"
+              counter
+              hint="அதிகபட்சம் 500 எழுத்துகள்"
               class="tamil q-mb-md"
               label="திருத்த வேண்டிய பா"
               placeholder="பிழையுள்ள பாவை இங்கே இடுக..."
             />
           </div>
 
-          <!-- Usage indicator -->
+          <!-- Per-session usage indicator -->
           <div v-if="remaining !== null" class="q-mb-sm">
             <q-badge
               :color="remaining > 1 ? 'grey-6' : remaining === 1 ? 'orange-8' : 'red-8'"
               class="tamil"
             >
-              {{ remaining > 0 ? `${remaining} இலவச பயன்பாடு மீதமுள்ளது` : 'இலவச பயன்பாடு முடிந்தது' }}
+              {{ remaining > 0 ? `உங்களுக்கு ${remaining} இலவச பயன்பாடு மீதமுள்ளது` : 'இலவச பயன்பாடு முடிந்தது' }}
             </q-badge>
           </div>
 
@@ -285,6 +306,30 @@
                 <q-btn flat dense icon="refresh" label="மீண்டும்" class="tamil" @click="run" />
               </template>
             </q-banner>
+
+            <!-- Donate banner — shown after first successful generation, once per session -->
+            <q-banner
+              v-if="showDonateBanner"
+              dense
+              class="bg-blue-1 text-blue-9 tamil q-mt-md rounded-borders"
+              style="font-size:0.85rem"
+            >
+              <template v-slot:avatar>
+                <q-icon name="favorite" color="blue-7" />
+              </template>
+              AI வெண்பா உருவாக்கல் ஒவ்வொன்றும் எங்களுக்கு சிறிய செலவை ஏற்படுத்துகிறது. இதை தொடர உதவ விரும்புகிறீர்களா?
+              <template v-slot:action>
+                <q-btn
+                  flat dense no-caps
+                  label="நன்கொடை அளிக்க"
+                  icon="volunteer_activism"
+                  class="tamil text-blue-9"
+                  href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=DLDU4TRF7KCNC&source=url"
+                  target="_blank"
+                />
+                <q-btn flat dense icon="close" class="text-blue-7" @click="showDonateBanner = false" />
+              </template>
+            </q-banner>
           </div>
 
         </div>
@@ -334,10 +379,12 @@ export default {
       iterations: [],
       finalVerse: null,
       success: false,
+      showDonateBanner: false,
       errorMsg: null,
       currentThinking: null,
       currentChecking: null,
       remaining: null,
+      globalRemaining: null,
       explanation: null,
       sandhi: null,
       literal: null,
@@ -356,7 +403,7 @@ export default {
     if (this.devToken) usageHeaders['X-Dev-Token'] = this.devToken
     fetch(AI_BACKEND + '/ai/usage', { headers: usageHeaders })
       .then(r => r.json())
-      .then(d => { this.remaining = d.remaining })
+      .then(d => { this.remaining = d.remaining; this.globalRemaining = d.globalRemaining !== undefined ? d.globalRemaining : null })
       .catch(() => {})
     this.fetchStats()
   },
@@ -378,6 +425,7 @@ export default {
       this.iterations = []
       this.finalVerse = null
       this.success = false
+      this.showDonateBanner = false
       this.errorMsg = null
       this.currentThinking = null
       this.currentChecking = null
@@ -460,7 +508,7 @@ export default {
               this.finalVerse = event.verse
               this.success = event.success
               this.loading = false
-              if (event.success) this.loadingExtra = true
+              if (event.success) { this.loadingExtra = true; this.showDonateBanner = true }
             } else if (event.type === 'tokens') {
               this.genTokens = event
               this.fetchStats()

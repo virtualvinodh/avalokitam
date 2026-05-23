@@ -7,17 +7,13 @@ const { formatFeedback } = require('./errorFeedback')
 const MAX_ITERATIONS = 5
 const POLISH_ENABLED = false
 
-// Gemini 2.5 Pro stepped pricing: threshold based on prompt size
-const PRICE = {
-  short: { input: 1.25, output: 10.00 }, // prompts <= 200k tokens
-  long:  { input: 2.50, output: 15.00 }  // prompts >  200k tokens
-}
+// Gemini 3.5 Flash flat pricing (per 1M tokens)
+const PRICE = { input: 1.50, output: 9.00 }
 
 function tokenCost (usage) {
   const inputTokens = usage.promptTokenCount || 0
   const outputAndThinking = (usage.candidatesTokenCount || 0) + (usage.thoughtsTokenCount || 0)
-  const tier = inputTokens > 200_000 ? PRICE.long : PRICE.short
-  return inputTokens / 1e6 * tier.input + outputAndThinking / 1e6 * tier.output
+  return inputTokens / 1e6 * PRICE.input + outputAndThinking / 1e6 * PRICE.output
 }
 
 function addUsage (acc, u) {

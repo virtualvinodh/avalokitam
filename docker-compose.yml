@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  php-app:
+    image: avalokitam-local
+    ports:
+      - "8080:8080"
+    networks:
+      - avalokitam-net
+
+  ai-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-pro}
+      - PHP_API_URL=http://php-app:8080/api.php
+      - PORT=3001
+    depends_on:
+      - php-app
+    networks:
+      - avalokitam-net
+
+networks:
+  avalokitam-net:
+    driver: bridge
