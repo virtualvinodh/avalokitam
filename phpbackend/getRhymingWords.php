@@ -1,6 +1,6 @@
 <?PHP
 set_time_limit(300);
-ini_set("memory_limit", "256M");
+ini_set("memory_limit", "512M");
 Header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept");
 
@@ -18,6 +18,10 @@ if (!$found) {
     $raw = explode("\n", file_get_contents('wordlistprocessed.txt'));
     $flat = array(); $etukaiIdx = array(); $monaiIdx = array();
 
+    $iyaipuIdx = array();
+    $firstIdx  = array(1 => array(), 2 => array(), 3 => array());
+    $lastIdx   = array(1 => array(), 2 => array(), 3 => array());
+
     foreach ($raw as $line) {
         $parts = explode(',', $line);
         if (count($parts) < 3) continue;
@@ -27,11 +31,12 @@ if (!$found) {
         if (!$word) continue;
 
         $wordL = tam2lat($word);
+        $wlen  = strlen($wordL);
         $i = count($flat);
         $flat[] = array($wordL, $word, $vaypatu, $matra);
 
-        if (strlen($wordL) > 2) {
-            // etukai key: vowel class + second consonant
+        // etukai key: vowel class + second consonant
+        if ($wlen > 2) {
             $v = substr($wordL, 1, 1);
             if      (in_array($v, $LONG_VOWELS))  $vc = 'L';
             elseif  (in_array($v, $SHORT_VOWELS)) $vc = 'S';
@@ -51,9 +56,41 @@ if (!$found) {
             if (!isset($monaiIdx[$mk])) $monaiIdx[$mk] = array();
             $monaiIdx[$mk][] = $i;
         }
+
+        // iyaipu: last syllable (last 2 chars)
+        if ($wlen >= 2) {
+            $ik = substr($wordL, -2);
+            if (!isset($iyaipuIdx[$ik])) $iyaipuIdx[$ik] = array();
+            $iyaipuIdx[$ik][] = $i;
+        }
+
+        // first N syllables (N=1,2,3)
+        for ($n = 1; $n <= 3; $n++) {
+            if ($wlen >= $n * 2) {
+                $fk = substr($wordL, 0, $n * 2);
+                if (!isset($firstIdx[$n][$fk])) $firstIdx[$n][$fk] = array();
+                $firstIdx[$n][$fk][] = $i;
+            }
+        }
+
+        // last N syllables (N=1,2,3)
+        for ($n = 1; $n <= 3; $n++) {
+            if ($wlen >= $n * 2) {
+                $lk = substr($wordL, -($n * 2));
+                if (!isset($lastIdx[$n][$lk])) $lastIdx[$n][$lk] = array();
+                $lastIdx[$n][$lk][] = $i;
+            }
+        }
     }
 
-    $index = array('flat' => $flat, 'etukai' => $etukaiIdx, 'monai' => $monaiIdx);
+    $index = array(
+        'flat'   => $flat,
+        'etukai' => $etukaiIdx,
+        'monai'  => $monaiIdx,
+        'iyaipu' => $iyaipuIdx,
+        'first'  => $firstIdx,
+        'last'   => $lastIdx
+    );
     apc_store('wordindex', $index, 3600);
 }
 
@@ -84,6 +121,28 @@ if ($todaiSel == 'etukai') {
     $mk = isset($MONAI_GROUPS[$f]) ? $MONAI_GROUPS[$f] : $f;
     $candidateIdx = isset($index['monai'][$mk]) ? $index['monai'][$mk] : array();
     $useFlat = false;
+} elseif ($todaiSel == 'iyaipu') {
+    $ik = substr($source, -2);
+    $candidateIdx = isset($index['iyaipu'][$ik]) ? $index['iyaipu'][$ik] : array();
+    $useFlat = false;
+} elseif ($todaiSel == 'first') {
+    $n = (int)$_GET['todaiSelN'];
+    if ($n >= 1 && $n <= 3 && strlen($source) >= $n * 2) {
+        $fk = substr($source, 0, $n * 2);
+        $candidateIdx = isset($index['first'][$n][$fk]) ? $index['first'][$n][$fk] : array();
+        $useFlat = false;
+    } else {
+        $useFlat = true;
+    }
+} elseif ($todaiSel == 'last') {
+    $n = (int)$_GET['todaiSelN'];
+    if ($n >= 1 && $n <= 3 && strlen($source) >= $n * 2) {
+        $lk = substr($source, -($n * 2));
+        $candidateIdx = isset($index['last'][$n][$lk]) ? $index['last'][$n][$lk] : array();
+        $useFlat = false;
+    } else {
+        $useFlat = true;
+    }
 } else {
     $useFlat = true;
 }
@@ -111,16 +170,14 @@ foreach ($iterate as $item) {
     $wordLen = count(str_split($wordL, 2));
 
     // Todai check for non-indexed types
-    if ($todaiSel == 'none' || $todaiSel == 'etukai' || $todaiSel == 'monai')
-        $todaiOk = true;
-    elseif ($todaiSel == 'iyaipu')
+    if ($useFlat && $todaiSel == 'iyaipu')
         $todaiOk = $ptreeA->checkIyaipu($source, $wordL);
-    elseif ($todaiSel == 'first')
-        $todaiOk = substr($wordL,0,$_GET['todaiSelN']*2) == substr($source,0,$_GET['todaiSelN']*2);
-    elseif ($todaiSel == 'last')
-        $todaiOk = substr($wordL,-$_GET['todaiSelN']*2) == substr($source,-$_GET['todaiSelN']*2);
+    elseif ($useFlat && $todaiSel == 'first')
+        $todaiOk = substr($wordL, 0, $_GET['todaiSelN']*2) == substr($source, 0, $_GET['todaiSelN']*2);
+    elseif ($useFlat && $todaiSel == 'last')
+        $todaiOk = substr($wordL, -$_GET['todaiSelN']*2) == substr($source, -$_GET['todaiSelN']*2);
     else
-        $todaiOk = true;
+        $todaiOk = true; // pre-filtered by index, or 'none'
 
     // Letter count
     $lc = $_GET['letterCountSel'];
