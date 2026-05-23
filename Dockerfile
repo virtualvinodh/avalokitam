@@ -12,7 +12,6 @@ RUN apt-get update && apt-get install -y curl supervisor && \
 RUN { \
       echo "memory_limit = 256M"; \
       echo "max_execution_time = 300"; \
-      echo "extension=apcu.so"; \
       echo "apc.shm_size=64M"; \
     } > /usr/local/etc/php/conf.d/avalokitam.ini
 
