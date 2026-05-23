@@ -1,130 +1,167 @@
 <?PHP
-
-/*
- * Copyright (C) 2015 Vinodh Rajan vinodh@virtualvinodh.com
- *
- * This file is a part
- * of Avalokitam. Avalokitam is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Affero General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or (at your
- * option) any later version. This program is distributed in the hope that it
- * will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General
- * Public License for more details. You should have received a copy of the GNU
- * Affero General Public License along with this program. If not, see
- * <http://www.gnu.org/licenses/>.
- */
-
-set_time_limit(300); // run it for 5 minutes
-
+set_time_limit(300);
+ini_set("memory_limit", "256M");
 Header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept");
 
- require_once "parsetreeclass.php";
+require_once "parsetreeclass.php";
 
- @$ptreeA = new ProsodyParseTree ("", "", "");
+$LONG_VOWELS  = array('A','I','U','E','O','W','Y');
+$SHORT_VOWELS = array('a','i','u','e','o');
+$MONAI_GROUPS = array('J'=>'Jn','n'=>'Jn','m'=>'mv','v'=>'mv','t'=>'tc','c'=>'tc');
 
- # The Wordlist was extracted from Wiktionary
- $wordListCont = file_get_contents('wordlistprocessed.txt');
- $wordList = explode("\n",$wordListCont);
+// ── Build or fetch pre-indexed word table ─────────────────────────────────
+// flat: array of [wordL, word, vaypatu, matra]
+// etukai/monai: array of integer offsets into flat
+$index = apc_fetch('wordindex', $found);
+if (!$found) {
+    $raw = explode("\n", file_get_contents('wordlistprocessed.txt'));
+    $flat = array(); $etukaiIdx = array(); $monaiIdx = array();
 
- $source = trim(tam2lat($_GET['source']));
- $sourceSyll = str_split($source,2);
- $sourceLen = count($sourceSyll);
- $sourceMatra = $ptreeA->GetMatraCount($source);
+    foreach ($raw as $line) {
+        $parts = explode(',', $line);
+        if (count($parts) < 3) continue;
+        $word    = trim($parts[0]);
+        $vaypatu = trim($parts[1]);
+        $matra   = trim($parts[2]);
+        if (!$word) continue;
 
-if($_GET['vaypatuSel'] == "அதே வாய்ப்பாடு") {
- 		$ptree2 = new ProsodyParseTree ( trim ($_GET['source']), 'ta', False );
-   	$formula = lat2tam($ptree2->ParseTreeRoot[0]['pA']['aTi-1']['cI_r-1']['meta']);
-	}
+        $wordL = tam2lat($word);
+        $i = count($flat);
+        $flat[] = array($wordL, $word, $vaypatu, $matra);
 
- $matchList = [];
+        if (strlen($wordL) > 2) {
+            // etukai key: vowel class + second consonant
+            $v = substr($wordL, 1, 1);
+            if      (in_array($v, $LONG_VOWELS))  $vc = 'L';
+            elseif  (in_array($v, $SHORT_VOWELS)) $vc = 'S';
+            else                                   $vc = null;
 
-#$wordList = array_splice($wordList,0,2000);
+            if ($vc !== null) {
+                $sec = substr($wordL, 2, 2);
+                $sk  = (substr($sec, 0, 1) == '_') ? $sec : substr($sec, 0, 1);
+                $ek  = $vc . ':' . $sk;
+                if (!isset($etukaiIdx[$ek])) $etukaiIdx[$ek] = array();
+                $etukaiIdx[$ek][] = $i;
+            }
 
- foreach($wordList as $wordPair)
- {
-	$wordSplit = explode(",",$wordPair);
-	$word = trim($wordSplit[0]);
-	$vaypatu = trim($wordSplit[1]);
-	$wordMatra = trim($wordSplit[2]);
+            // monai key: first consonant, normalized by varga
+            $f  = substr($wordL, 0, 1);
+            $mk = isset($MONAI_GROUPS[$f]) ? $MONAI_GROUPS[$f] : $f;
+            if (!isset($monaiIdx[$mk])) $monaiIdx[$mk] = array();
+            $monaiIdx[$mk][] = $i;
+        }
+    }
 
-	$wordL = tam2lat($word);
-	$wordSyll = str_split($wordL,2);
-	$wordLen = count($wordSyll);
+    $index = array('flat' => $flat, 'etukai' => $etukaiIdx, 'monai' => $monaiIdx);
+    apc_store('wordindex', $index, 3600);
+}
 
-	# Selectors based on options
+// ── Prepare source ────────────────────────────────────────────────────────
+@$ptreeA = new ProsodyParseTree("", "", "");
+$source      = trim(tam2lat($_GET['source']));
+$sourceLen   = count(str_split($source, 2));
+$sourceMatra = $ptreeA->GetMatraCount($source);
+$todaiSel    = $_GET['todaiSel'];
 
-	if($_GET['todaiSel'] == "none")
-		$todaiSel = True;
-	else if($_GET['todaiSel'] == "etukai")
-		$todaiSel = $ptreeA->CheckEtukaiSpecialVarga($source,$wordL);
-	else if($_GET['todaiSel'] == "monai")
-		$todaiSel = $ptreeA->CheckMonaiVarga($source,$wordL);
-	else if($_GET['todaiSel'] == "iyaipu")
-		$todaiSel = $ptreeA->checkIyaipu($source,$wordL);
-	else if($_GET['todaiSel'] == "first")
-		$todaiSel = substr($wordL,0,$_GET['todaiSelN']*2) == substr($source,0,$_GET['todaiSelN']*2);
-	else if($_GET['todaiSel'] == "last")
-		$todaiSel = substr($wordL,-$_GET['todaiSelN']*2) == substr($source,-$_GET['todaiSelN']*2);
+// ── Resolve candidate indices ─────────────────────────────────────────────
+if ($todaiSel == 'etukai') {
+    $v = substr($source, 1, 1);
+    if      (in_array($v, $LONG_VOWELS))  $vc = 'L';
+    elseif  (in_array($v, $SHORT_VOWELS)) $vc = 'S';
+    else                                   $vc = null;
+    if ($vc !== null && strlen($source) > 2) {
+        $sec = substr($source, 2, 2);
+        $sk  = (substr($sec, 0, 1) == '_') ? $sec : substr($sec, 0, 1);
+        $ek  = $vc . ':' . $sk;
+        $candidateIdx = isset($index['etukai'][$ek]) ? $index['etukai'][$ek] : array();
+    } else {
+        $candidateIdx = array();
+    }
+    $useFlat = false;
+} elseif ($todaiSel == 'monai') {
+    $f  = substr($source, 0, 1);
+    $mk = isset($MONAI_GROUPS[$f]) ? $MONAI_GROUPS[$f] : $f;
+    $candidateIdx = isset($index['monai'][$mk]) ? $index['monai'][$mk] : array();
+    $useFlat = false;
+} else {
+    $useFlat = true;
+}
 
-	if($_GET['letterCountSel'] == "all")
- 		$letterCountSel = True;
- 	else if($_GET['letterCountSel'] == "src")
- 		$letterCountSel = ($wordLen == $sourceLen);
- 	else if($_GET['letterCountSel'] == "srcGt")
- 		$letterCountSel = ($wordLen > $sourceLen);
- 	else if($_GET['letterCountSel'] == "srcLs")
- 		$letterCountSel = ($wordLen < $sourceLen);
-  	else if($_GET['letterCountSel'] == "other")
- 		$letterCountSel = ($wordLen == $_GET['letterCountSelN']);
+// ── Optional vaypatu formula ──────────────────────────────────────────────
+$formula = null;
+if ($_GET['vaypatuSel'] == "அதே வாய்ப்பாடு") {
+    $ptree2  = new ProsodyParseTree(trim($_GET['source']), 'ta', False);
+    $formula = lat2tam($ptree2->ParseTreeRoot[0]['pA']['aTi-1']['cI_r-1']['meta']);
+}
 
-	if($_GET['matraCountSel'] == "all")
- 		$matraCountSel = True;
- 	else if($_GET['matraCountSel'] == "src")
- 		$matraCountSel = ($wordMatra == $sourceMatra);
- 	else if($_GET['matraCountSel'] == "srcGt")
- 		$matraCountSel = ($wordMatra > $sourceMatra);
- 	else if($_GET['matraCountSel'] == "srcLs")
- 		$matraCountSel = ($wordMatra < $sourceMatra);
-  	else if($_GET['matraCountSel'] == "other")
- 		$letterCountSel = ($wordLen == $_GET['matraCountSelN']);
+// ── Main filter ───────────────────────────────────────────────────────────
+$flat = $index['flat'];
+$matchList = array();
 
-	if($_GET['vaypatuSel'] == "அனைத்தும்")
- 		$vaypatuSel = True;
-	else if($_GET['vaypatuSel'] == "அதே வாய்ப்பாடு")
- 		$vaypatuSel = ($formula == $vaypatu);
- 	else
- 		$vaypatuSel = ($_GET['vaypatuSel'] == $vaypatu);
+$iterate = $useFlat ? $flat : $candidateIdx;
 
- 	if($todaiSel && $letterCountSel && $matraCountSel && $vaypatuSel)
-		$matchList[] = $word;
- }
+foreach ($iterate as $item) {
+    if ($useFlat) {
+        $row = $item;
+    } else {
+        $row = $flat[$item];
+    }
+    list($wordL, $word, $vaypatu, $wordMatra) = $row;
+    $wordLen = count(str_split($wordL, 2));
 
-$matchListTalai = [];
+    // Todai check for non-indexed types
+    if ($todaiSel == 'none' || $todaiSel == 'etukai' || $todaiSel == 'monai')
+        $todaiOk = true;
+    elseif ($todaiSel == 'iyaipu')
+        $todaiOk = $ptreeA->checkIyaipu($source, $wordL);
+    elseif ($todaiSel == 'first')
+        $todaiOk = substr($wordL,0,$_GET['todaiSelN']*2) == substr($source,0,$_GET['todaiSelN']*2);
+    elseif ($todaiSel == 'last')
+        $todaiOk = substr($wordL,-$_GET['todaiSelN']*2) == substr($source,-$_GET['todaiSelN']*2);
+    else
+        $todaiOk = true;
 
-$bonds = "";
+    // Letter count
+    $lc = $_GET['letterCountSel'];
+    if      ($lc == 'all')   $lcOk = true;
+    elseif  ($lc == 'src')   $lcOk = ($wordLen == $sourceLen);
+    elseif  ($lc == 'srcGt') $lcOk = ($wordLen > $sourceLen);
+    elseif  ($lc == 'srcLs') $lcOk = ($wordLen < $sourceLen);
+    elseif  ($lc == 'other') $lcOk = ($wordLen == $_GET['letterCountSelN']);
+    else $lcOk = true;
 
-# Check for Linkage
+    // Matra count
+    $mc = $_GET['matraCountSel'];
+    if      ($mc == 'all')   $mcOk = true;
+    elseif  ($mc == 'src')   $mcOk = ($wordMatra == $sourceMatra);
+    elseif  ($mc == 'srcGt') $mcOk = ($wordMatra > $sourceMatra);
+    elseif  ($mc == 'srcLs') $mcOk = ($wordMatra < $sourceMatra);
+    elseif  ($mc == 'other') $mcOk = ($wordLen == $_GET['matraCountSelN']);
+    else $mcOk = true;
 
-if($_GET['talaiSel'] == "அனைத்தும்")
- 	$matchListTalai = $matchList;
-else
-{
-	foreach($matchList as $word)
-	{
-		@$ptree= new ProsodyParseTree (lat2tam($source)." ".$word, "", "");
-		$bond = trim($ptree->WordBond[0]['bond']);
- 		$talaiSel = (strpos($bond,$_GET['talaiSel']) !== False);
+    // Vaypatu
+    $vp = $_GET['vaypatuSel'];
+    if      ($vp == "அனைத்தும்")           $vpOk = true;
+    elseif  ($vp == "அதே வாய்ப்பாடு")     $vpOk = ($formula == $vaypatu);
+    else                                    $vpOk = ($vp == $vaypatu);
 
-# 		$bonds .= $bond." ";
+    if ($todaiOk && $lcOk && $mcOk && $vpOk)
+        $matchList[] = $word;
+}
 
-	 	if($talaiSel)
-			$matchListTalai[] = $word;
-	}
-
+// ── Talai filter ──────────────────────────────────────────────────────────
+$matchListTalai = array();
+if ($_GET['talaiSel'] == "அனைத்தும்") {
+    $matchListTalai = $matchList;
+} else {
+    foreach ($matchList as $word) {
+        @$ptree = new ProsodyParseTree(lat2tam($source) . " " . $word, "", "");
+        $bond   = trim($ptree->WordBond[0]['bond']);
+        if (strpos($bond, $_GET['talaiSel']) !== false)
+            $matchListTalai[] = $word;
+    }
 }
 
 echo json_encode($matchListTalai, JSON_UNESCAPED_UNICODE);
-
 ?>
