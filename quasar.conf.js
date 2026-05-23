@@ -120,6 +120,10 @@ module.exports = function (ctx) {
         '/api.php': {
           target: 'http://localhost:8080',
           changeOrigin: true
+        },
+        '/getRhymingWords.php': {
+          target: 'http://localhost:8080',
+          changeOrigin: true
         }
       }
     },

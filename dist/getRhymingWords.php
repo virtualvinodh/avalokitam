@@ -1,6 +1,6 @@
 <?PHP
 set_time_limit(300);
-ini_set("memory_limit", "512M");
+ini_set("memory_limit", "256M");
 Header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept");
 
@@ -10,18 +10,19 @@ $LONG_VOWELS  = array('A','I','U','E','O','W','Y');
 $SHORT_VOWELS = array('a','i','u','e','o');
 $MONAI_GROUPS = array('J'=>'Jn','n'=>'Jn','m'=>'mv','v'=>'mv','t'=>'tc','c'=>'tc');
 
-// ── Build or fetch pre-indexed word table ─────────────────────────────────
-// flat: array of [wordL, word, vaypatu, matra]
-// etukai/monai: array of integer offsets into flat
-$index = apc_fetch('wordindex', $found);
-if (!$found) {
+// ── Prepare source ────────────────────────────────────────────────────────
+@$ptreeA = new ProsodyParseTree("", "", "");
+$source      = trim(tam2lat($_GET['source']));
+$sourceLen   = count(str_split($source, 2));
+$sourceMatra = $ptreeA->GetMatraCount($source);
+$todaiSel    = $_GET['todaiSel'];
+$todaiSelN   = (int)$_GET['todaiSelN'];
+
+// Build a sub-index from wordlist. Each APC key holds one todai type's buckets,
+// storing full rows so requests never need to load more than one index.
+function buildSubIndex($type, $n, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS) {
     $raw = explode("\n", file_get_contents('wordlistprocessed.txt'));
-    $flat = array(); $etukaiIdx = array(); $monaiIdx = array();
-
-    $iyaipuIdx = array();
-    $firstIdx  = array(1 => array(), 2 => array(), 3 => array());
-    $lastIdx   = array(1 => array(), 2 => array(), 3 => array());
-
+    $idx = array();
     foreach ($raw as $line) {
         $parts = explode(',', $line);
         if (count($parts) < 3) continue;
@@ -29,79 +30,44 @@ if (!$found) {
         $vaypatu = trim($parts[1]);
         $matra   = trim($parts[2]);
         if (!$word) continue;
-
         $wordL = tam2lat($word);
         $wlen  = strlen($wordL);
-        $i = count($flat);
-        $flat[] = array($wordL, $word, $vaypatu, $matra);
+        $row   = array($wordL, $word, $vaypatu, $matra);
 
-        // etukai key: vowel class + second consonant
-        if ($wlen > 2) {
+        if ($type === 'flat') {
+            $idx[] = $row;
+        } elseif ($type === 'etukai' && $wlen > 2) {
             $v = substr($wordL, 1, 1);
             if      (in_array($v, $LONG_VOWELS))  $vc = 'L';
             elseif  (in_array($v, $SHORT_VOWELS)) $vc = 'S';
             else                                   $vc = null;
-
             if ($vc !== null) {
                 $sec = substr($wordL, 2, 2);
                 $sk  = (substr($sec, 0, 1) == '_') ? $sec : substr($sec, 0, 1);
-                $ek  = $vc . ':' . $sk;
-                if (!isset($etukaiIdx[$ek])) $etukaiIdx[$ek] = array();
-                $etukaiIdx[$ek][] = $i;
+                $idx[$vc . ':' . $sk][] = $row;
             }
-
-            // monai key: first consonant, normalized by varga
+        } elseif ($type === 'monai' && $wlen > 2) {
             $f  = substr($wordL, 0, 1);
             $mk = isset($MONAI_GROUPS[$f]) ? $MONAI_GROUPS[$f] : $f;
-            if (!isset($monaiIdx[$mk])) $monaiIdx[$mk] = array();
-            $monaiIdx[$mk][] = $i;
-        }
-
-        // iyaipu: last syllable (last 2 chars)
-        if ($wlen >= 2) {
-            $ik = substr($wordL, -2);
-            if (!isset($iyaipuIdx[$ik])) $iyaipuIdx[$ik] = array();
-            $iyaipuIdx[$ik][] = $i;
-        }
-
-        // first N syllables (N=1,2,3)
-        for ($n = 1; $n <= 3; $n++) {
-            if ($wlen >= $n * 2) {
-                $fk = substr($wordL, 0, $n * 2);
-                if (!isset($firstIdx[$n][$fk])) $firstIdx[$n][$fk] = array();
-                $firstIdx[$n][$fk][] = $i;
-            }
-        }
-
-        // last N syllables (N=1,2,3)
-        for ($n = 1; $n <= 3; $n++) {
-            if ($wlen >= $n * 2) {
-                $lk = substr($wordL, -($n * 2));
-                if (!isset($lastIdx[$n][$lk])) $lastIdx[$n][$lk] = array();
-                $lastIdx[$n][$lk][] = $i;
-            }
+            $idx[$mk][] = $row;
+        } elseif ($type === 'iyaipu' && $wlen >= 2) {
+            $idx[substr($wordL, -2)][] = $row;
+        } elseif ($type === 'first' && $wlen >= $n * 2) {
+            $idx[substr($wordL, 0, $n * 2)][] = $row;
+        } elseif ($type === 'last' && $wlen >= $n * 2) {
+            $idx[substr($wordL, -($n * 2))][] = $row;
         }
     }
-
-    $index = array(
-        'flat'   => $flat,
-        'etukai' => $etukaiIdx,
-        'monai'  => $monaiIdx,
-        'iyaipu' => $iyaipuIdx,
-        'first'  => $firstIdx,
-        'last'   => $lastIdx
-    );
-    apc_store('wordindex', $index, 3600);
+    return $idx;
 }
 
-// ── Prepare source ────────────────────────────────────────────────────────
-@$ptreeA = new ProsodyParseTree("", "", "");
-$source      = trim(tam2lat($_GET['source']));
-$sourceLen   = count(str_split($source, 2));
-$sourceMatra = $ptreeA->GetMatraCount($source);
-$todaiSel    = $_GET['todaiSel'];
+// ── Resolve candidates ────────────────────────────────────────────────────
+// Each branch fetches only the needed APC key, extracts its bucket, then
+// frees the full index so peak PHP memory is ~50-80 MB rather than 512 MB.
+$candidates     = array();
+$useFlat        = false;
+$needTodaiCheck = false;
 
-// ── Resolve candidate indices ─────────────────────────────────────────────
 if ($todaiSel == 'etukai') {
     $v = substr($source, 1, 1);
     if      (in_array($v, $LONG_VOWELS))  $vc = 'L';
@@ -110,41 +76,47 @@ if ($todaiSel == 'etukai') {
     if ($vc !== null && strlen($source) > 2) {
         $sec = substr($source, 2, 2);
         $sk  = (substr($sec, 0, 1) == '_') ? $sec : substr($sec, 0, 1);
-        $ek  = $vc . ':' . $sk;
-        $candidateIdx = isset($index['etukai'][$ek]) ? $index['etukai'][$ek] : array();
-    } else {
-        $candidateIdx = array();
+        $idx = apc_fetch('idx_etukai', $found);
+        if (!$found) { $idx = buildSubIndex('etukai', 0, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apc_store('idx_etukai', $idx, 3600); }
+        $candidates = isset($idx[$vc . ':' . $sk]) ? $idx[$vc . ':' . $sk] : array();
+        unset($idx);
     }
-    $useFlat = false;
 } elseif ($todaiSel == 'monai') {
     $f  = substr($source, 0, 1);
     $mk = isset($MONAI_GROUPS[$f]) ? $MONAI_GROUPS[$f] : $f;
-    $candidateIdx = isset($index['monai'][$mk]) ? $index['monai'][$mk] : array();
-    $useFlat = false;
+    $idx = apc_fetch('idx_monai', $found);
+    if (!$found) { $idx = buildSubIndex('monai', 0, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apc_store('idx_monai', $idx, 3600); }
+    $candidates = isset($idx[$mk]) ? $idx[$mk] : array();
+    unset($idx);
 } elseif ($todaiSel == 'iyaipu') {
     $ik = substr($source, -2);
-    $candidateIdx = isset($index['iyaipu'][$ik]) ? $index['iyaipu'][$ik] : array();
-    $useFlat = false;
-} elseif ($todaiSel == 'first') {
-    $n = (int)$_GET['todaiSelN'];
-    if ($n >= 1 && $n <= 3 && strlen($source) >= $n * 2) {
-        $fk = substr($source, 0, $n * 2);
-        $candidateIdx = isset($index['first'][$n][$fk]) ? $index['first'][$n][$fk] : array();
-        $useFlat = false;
-    } else {
-        $useFlat = true;
-    }
-} elseif ($todaiSel == 'last') {
-    $n = (int)$_GET['todaiSelN'];
-    if ($n >= 1 && $n <= 3 && strlen($source) >= $n * 2) {
-        $lk = substr($source, -($n * 2));
-        $candidateIdx = isset($index['last'][$n][$lk]) ? $index['last'][$n][$lk] : array();
-        $useFlat = false;
-    } else {
-        $useFlat = true;
-    }
+    $idx = apc_fetch('idx_iyaipu', $found);
+    if (!$found) { $idx = buildSubIndex('iyaipu', 0, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apc_store('idx_iyaipu', $idx, 3600); }
+    $candidates = isset($idx[$ik]) ? $idx[$ik] : array();
+    unset($idx);
+} elseif ($todaiSel == 'first' && $todaiSelN >= 1 && $todaiSelN <= 3 && strlen($source) >= $todaiSelN * 2) {
+    $fk     = substr($source, 0, $todaiSelN * 2);
+    $apcKey = 'idx_first_' . $todaiSelN;
+    $idx = apc_fetch($apcKey, $found);
+    if (!$found) { $idx = buildSubIndex('first', $todaiSelN, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apc_store($apcKey, $idx, 3600); }
+    $candidates = isset($idx[$fk]) ? $idx[$fk] : array();
+    unset($idx);
+} elseif ($todaiSel == 'last' && $todaiSelN >= 1 && $todaiSelN <= 3 && strlen($source) >= $todaiSelN * 2) {
+    $lk     = substr($source, -($todaiSelN * 2));
+    $apcKey = 'idx_last_' . $todaiSelN;
+    $idx = apc_fetch($apcKey, $found);
+    if (!$found) { $idx = buildSubIndex('last', $todaiSelN, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apc_store($apcKey, $idx, 3600); }
+    $candidates = isset($idx[$lk]) ? $idx[$lk] : array();
+    unset($idx);
 } else {
-    $useFlat = true;
+    // todaiSel='none', or first/last with N out of range — iterate flat
+    $useFlat        = true;
+    $needTodaiCheck = ($todaiSel == 'first' || $todaiSel == 'last');
+}
+
+if ($useFlat) {
+    $candidates = apc_fetch('idx_flat', $found);
+    if (!$found) { $candidates = buildSubIndex('flat', 0, $LONG_VOWELS, $SHORT_VOWELS, $MONAI_GROUPS); apc_store('idx_flat', $candidates, 3600); }
 }
 
 // ── Optional vaypatu formula ──────────────────────────────────────────────
@@ -155,29 +127,23 @@ if ($_GET['vaypatuSel'] == "அதே வாய்ப்பாடு") {
 }
 
 // ── Main filter ───────────────────────────────────────────────────────────
-$flat = $index['flat'];
 $matchList = array();
 
-$iterate = $useFlat ? $flat : $candidateIdx;
-
-foreach ($iterate as $item) {
-    if ($useFlat) {
-        $row = $item;
-    } else {
-        $row = $flat[$item];
-    }
+foreach ($candidates as $row) {
     list($wordL, $word, $vaypatu, $wordMatra) = $row;
     $wordLen = count(str_split($wordL, 2));
 
-    // Todai check for non-indexed types
-    if ($useFlat && $todaiSel == 'iyaipu')
-        $todaiOk = $ptreeA->checkIyaipu($source, $wordL);
-    elseif ($useFlat && $todaiSel == 'first')
-        $todaiOk = substr($wordL, 0, $_GET['todaiSelN']*2) == substr($source, 0, $_GET['todaiSelN']*2);
-    elseif ($useFlat && $todaiSel == 'last')
-        $todaiOk = substr($wordL, -$_GET['todaiSelN']*2) == substr($source, -$_GET['todaiSelN']*2);
-    else
-        $todaiOk = true; // pre-filtered by index, or 'none'
+    // Todai check only needed when falling back to flat with a todai constraint
+    if ($needTodaiCheck) {
+        if ($todaiSel == 'first')
+            $todaiOk = substr($wordL, 0, $todaiSelN * 2) == substr($source, 0, $todaiSelN * 2);
+        elseif ($todaiSel == 'last')
+            $todaiOk = substr($wordL, -($todaiSelN * 2)) == substr($source, -($todaiSelN * 2));
+        else
+            $todaiOk = true;
+    } else {
+        $todaiOk = true;
+    }
 
     // Letter count
     $lc = $_GET['letterCountSel'];
@@ -185,7 +151,7 @@ foreach ($iterate as $item) {
     elseif  ($lc == 'src')   $lcOk = ($wordLen == $sourceLen);
     elseif  ($lc == 'srcGt') $lcOk = ($wordLen > $sourceLen);
     elseif  ($lc == 'srcLs') $lcOk = ($wordLen < $sourceLen);
-    elseif  ($lc == 'other') $lcOk = ($wordLen == $_GET['letterCountSelN']);
+    elseif  ($lc == 'other') $lcOk = ($wordLen == (int)$_GET['letterCountSelN']);
     else $lcOk = true;
 
     // Matra count
@@ -194,7 +160,7 @@ foreach ($iterate as $item) {
     elseif  ($mc == 'src')   $mcOk = ($wordMatra == $sourceMatra);
     elseif  ($mc == 'srcGt') $mcOk = ($wordMatra > $sourceMatra);
     elseif  ($mc == 'srcLs') $mcOk = ($wordMatra < $sourceMatra);
-    elseif  ($mc == 'other') $mcOk = ($wordLen == $_GET['matraCountSelN']);
+    elseif  ($mc == 'other') $mcOk = ($wordMatra == (int)$_GET['matraCountSelN']);
     else $mcOk = true;
 
     // Vaypatu

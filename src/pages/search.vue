@@ -25,12 +25,23 @@
           v-show="showProgress"
         />
     <div class="q-mt-lg tamil" v-show="resultWords !== ''">
-      மொத்த சொற்கள்: {{resultWords.length}} <br/><br/>
+      மொத்த சொற்கள்: {{resultWords.length}}
+      <span v-if="totalPages > 1" class="text-grey-6"> — பக்கம் {{currentPage}} / {{totalPages}}</span>
+      <br/><br/>
     <span v-if="resultWords.length <= 10000">
-      <q-chip outline color="grey-8" text-color="white" v-for="word in resultWords" :key="word" class="q-ma-xs">
+      <q-chip outline color="grey-8" text-color="white" v-for="word in pagedWords" :key="word" class="q-ma-xs">
         {{word}} <a :href="'https://ta.wiktionary.org/wiki/' + word" class="hrefword" target="_blank"><q-icon class="q-ml-xs" name="menu_book" color="grey-8" size="20px"/></a>
-
       </q-chip>
+      <div v-if="totalPages > 1" class="q-mt-md flex flex-center">
+        <q-pagination
+          v-model="currentPage"
+          :max="totalPages"
+          :max-pages="7"
+          boundary-links
+          direction-links
+          color="grey-8"
+        />
+      </div>
     </span>
     <span v-else class="tamil">
       <b>பத்தாயிரத்திற்கும் மேற்பட்ட சொற்கள் பொருந்துகின்றன. தயவு செய்து உங்கள் தேடல் விதிகளை இறுக்கமாக்குக.</b>
@@ -43,11 +54,20 @@
 
 import { LinkMixin } from '../mixin/LinkMixin'
 
+const PAGE_SIZE = 100
+
 export default {
-  // name: 'PageName',
-  components: {
-  },
+  components: {},
   mixins: [LinkMixin],
+  computed: {
+    totalPages () {
+      return Math.ceil(this.resultWords.length / PAGE_SIZE)
+    },
+    pagedWords () {
+      const start = (this.currentPage - 1) * PAGE_SIZE
+      return this.resultWords.slice(start, start + PAGE_SIZE)
+    }
+  },
   methods: {
     search: function () {
       this.showProgress = true
@@ -74,6 +94,7 @@ export default {
         .then(function (response) {
           dhis.showProgress = false
           // console.log(response.data)
+          dhis.currentPage = 1
           dhis.resultWords = JSON.parse(response.data.trim())
           // dhis.resultWords = JSON.parse(response.data)
         })
@@ -105,6 +126,7 @@ export default {
       letterCountVal: '2',
       matraCountVal: '5',
       resultWords: '',
+      currentPage: 1,
       ornamentOptions: [
         {
           label: 'எதுகை',
