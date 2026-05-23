@@ -1050,7 +1050,7 @@ class ProsodyParseTree
 
 		/* Classify the Metre */
 
-		$this->VenpaError = "";
+		$this->VenpaError = array();
 
 		// Logging and Classifying Errors
 
