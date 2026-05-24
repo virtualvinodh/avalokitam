@@ -1,4 +1,5 @@
 .quasar
+/dist/spa
 .DS_Store
 .thumbs.db
 node_modules
