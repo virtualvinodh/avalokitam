@@ -1,10 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "==> Building Quasar SPA..."
-NODE_OPTIONS=--openssl-legacy-provider npx quasar build
-
-echo "==> Building Docker image..."
+echo "==> Building image (Quasar + Docker)..."
 docker build -t avalokitam-prod .
 
 echo "==> Restarting container..."

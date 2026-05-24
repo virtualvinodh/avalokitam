@@ -75,19 +75,17 @@ module.exports = function (ctx) {
           }
         })
         // Force dart-sass instead of node-sass (node-sass doesn't run on arm64/Node 22)
-        // Also patch the quote() function which Quasar v1's sass incorrectly calls with numbers
+        // Also patch the quote() function which Quasar v1's sass incorrectly calls with numbers.
+        // Use prependData (a sass-level override) because Dart Sass's async render() API
+        // ignores synchronously-returning JS custom functions.
         const sass = require('sass')
         const sassOverrides = {
           implementation: sass,
-          sassOptions: {
-            functions: {
-              'quote($val)': function (val) {
-                const str = val instanceof sass.types.Number
-                  ? val.getValue().toString()
-                  : val instanceof sass.types.String ? val.getValue() : String(val)
-                return new sass.types.String('"' + str + '"')
-              }
-            }
+          prependData: function (loaderContext) {
+            const isSass = loaderContext.resourcePath.endsWith('.sass')
+            return isSass
+              ? '@function quote($val)\n  @return "#{$val}"\n'
+              : '@function quote($val) { @return "#{$val}"; }\n'
           }
         }
         function applyToRule (rule) {

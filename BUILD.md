@@ -2,32 +2,11 @@
 
 ## Prerequisites
 
-| Tool | Recommended | Notes |
-|------|-------------|-------|
-| Node.js | **16.x** | See note below |
-| npm | 8+ | comes with Node |
-| Docker Desktop | 4.x+ | must be running |
+| Tool | Notes |
+|------|-------|
+| Docker Desktop 4.x+ | must be running |
 
-### Node version note
-
-The frontend uses `@quasar/app@1.2.2` + `node-sass`, which has two issues on modern Node:
-
-- **Node 16**: works out of the box. Use [nvm](https://github.com/nvm-sh/nvm): `nvm use 16`
-- **Node 17–22**: Webpack 4's `md4` hash is not supported by OpenSSL 3. `build.sh` works around this automatically with `NODE_OPTIONS=--openssl-legacy-provider` — no action needed, just be aware if you run `quasar build` manually.
-- **Node 23+**: untested, likely breaks.
-
-`node-sass` also requires Python 2 + native build tools to compile. On macOS, Xcode Command Line Tools cover this. If you get a `node-gyp` error on first install run:
-
-```bash
-xcode-select --install
-```
-
-## First-time setup
-
-```bash
-npm install          # installs frontend deps (compiles node-sass — takes ~1 min)
-cd backend && npm install && cd ..   # installs AI backend deps
-```
+That's it. The Quasar SPA is compiled inside Docker — no local Node.js required.
 
 ## Build & run
 
@@ -35,29 +14,12 @@ cd backend && npm install && cd ..   # installs AI backend deps
 ./build.sh
 ```
 
-This does three things in sequence:
-
-1. `quasar build` → compiles the Vue SPA into `dist/spa/`
-2. `docker build` → builds the production image (`avalokitam-prod`)
-3. Restarts the `avalokitam-prod` container on `http://localhost:8080`
-
-## Manual steps (if needed)
-
-```bash
-# Frontend only
-NODE_OPTIONS=--openssl-legacy-provider npx quasar build
-
-# Docker image only (uses existing dist/spa)
-docker build -t avalokitam-prod .
-
-# Restart container only
-docker stop avalokitam-prod && docker rm avalokitam-prod
-docker run -d --name avalokitam-prod -p 8080:8080 avalokitam-prod
-```
+This builds the production image (Quasar inside Docker, then PHP+Node runtime) and
+restarts the `avalokitam-prod` container on `http://localhost:8080`.
 
 ## Environment variables
 
-The AI backend needs a Gemini API key. Copy `.env.example` and fill it in:
+The AI backend needs a Gemini API key:
 
 ```bash
 cp backend/.env.example backend/.env
@@ -66,8 +28,44 @@ cp backend/.env.example backend/.env
 
 `backend/.env` is gitignored and must never be committed.
 
-For production (Render), set `GEMINI_API_KEY` as an environment variable in the Render dashboard — do not bake it into the image.
+For production (Render), set `GEMINI_API_KEY` as an environment variable in the
+Render dashboard — do not bake it into the image.
 
-## Why multi-stage Docker build doesn't work here
+## How the multi-stage build works
 
-`node-sass` must compile a native binary using Python 2 + `node-gyp@3.x`. Modern Docker base images (Debian Bullseye+, Alpine 3.13+) no longer ship Python 2, so `npm ci` fails inside Docker. Building the SPA on the host Mac and copying `dist/spa/` into the image is the reliable workaround.
+```
+Stage 1 (node:20-bookworm-slim):
+  npm ci --ignore-scripts     ← skips node-sass native compilation
+  NODE_OPTIONS=--openssl-legacy-provider npx quasar build
+    → dist/spa/
+
+Stage 2 (php:7.4-apache):
+  Copy dist/spa from stage 1
+  Install PHP + APCu + Node.js 20 + supervisord
+  Copy phpbackend/ and backend/
+  Run Apache + Node.js via supervisord
+```
+
+### Key workarounds baked into the build
+
+- **node-sass skipped**: `npm ci --ignore-scripts` avoids the Python 2 + node-gyp
+  requirement. Quasar's sass-loader is patched (in `quasar.conf.js`) to use the
+  pure-JS `sass` package (Dart Sass) instead.
+
+- **OpenSSL legacy**: Node 20 + Webpack 4's md4 hash requires
+  `NODE_OPTIONS=--openssl-legacy-provider`.
+
+- **`quote()` fix**: The npm release of `quasar@1.2.2` calls `quote($i)` with a
+  Number in its sass, which breaks Dart Sass. `quasar.conf.js` prepends a sass-level
+  override via `prependData` that coerces numbers to strings via interpolation.
+
+## Manual steps (if needed)
+
+```bash
+# Docker image only
+docker build -t avalokitam-prod .
+
+# Restart container only
+docker stop avalokitam-prod && docker rm avalokitam-prod
+docker run -d --name avalokitam-prod -p 8080:8080 avalokitam-prod
+```
