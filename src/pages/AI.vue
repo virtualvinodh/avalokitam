@@ -381,6 +381,7 @@ export default {
       errorMsg: null,
       currentThinking: null,
       currentChecking: null,
+      pendingPrompt: null,
       remaining: null,
       globalRemaining: null,
       explanation: null,
@@ -427,6 +428,7 @@ export default {
       this.errorMsg = null
       this.currentThinking = null
       this.currentChecking = null
+      this.pendingPrompt = null
       this.explanation = null
       this.sandhi = null
       this.literal = null
@@ -488,11 +490,13 @@ export default {
               this.currentThinking = { attempt: event.attempt, prompt: event.prompt }
               this.currentChecking = null
             } else if (event.type === 'checking') {
+              this.pendingPrompt = this.currentThinking ? this.currentThinking.prompt : null
               this.currentChecking = { attempt: event.attempt, verse: event.verse, thinking: event.thinking || null }
               this.currentThinking = null
             } else if (event.type === 'iteration') {
-              const prompt = this.currentThinking ? this.currentThinking.prompt : null
+              const prompt = this.pendingPrompt
               const thinking = this.currentChecking ? this.currentChecking.thinking : null
+              this.pendingPrompt = null
               this.currentChecking = null
               this.currentThinking = null
               const idx = this.iterations.length

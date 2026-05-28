@@ -227,7 +227,7 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
 
     let generated, thinking
     try {
-      ;({ text: generated, thinking } = await gemini(prompt, 'minimal', `attempt ${attempt}`))
+      ;({ text: generated, thinking } = await gemini(prompt, 'low', `attempt ${attempt}`))
     } catch (err) {
       throw new Error(`Gemini API error on attempt ${attempt}: ${err.message}`)
     }
@@ -349,4 +349,4 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
   return done(result)
 }
 
-module.exports = { runLoop }
+module.exports = { runLoop, callParser, parseXML }

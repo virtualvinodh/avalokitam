@@ -148,12 +148,13 @@ The prosody parser found these errors — fix them exactly as described:
 
 ${analysis}
 
-INSTRUCTIONS:
-- Fix ONLY the feet and lines listed above. Do not alter correct feet.
-- For each BOND ERROR: rewrite the foot(s) indicated so the bond becomes வெண்டளை.
-- For each INVALID FOOT TYPE: replace that foot with a valid ஈரசைச்சீர் or காய்ச்சீர்.
-- For each FOOT COUNT ERROR: add or remove சீர் in that line only.
-- Preserve the verse meaning as closely as possible.
+CRITICAL RULE: Copy every word of the verse EXACTLY as written — identical spelling, no synonyms, no reordering — EXCEPT for the specific feet listed in the fix options above. Treat all unlisted positions as frozen.
+
+For each listed position:
+- BOND ERROR: replace that foot with a new Tamil word matching the given foot type and syllable pattern.
+- INVALID FOOT TYPE: replace that foot with a valid ஈரசைச்சீர் or காய்ச்சீர்.
+- FOOT COUNT ERROR: add or remove சீர் in that line only.
+Do not touch any other word.
 Output only the corrected Tamil verse, nothing else.`
 }
 

@@ -61,6 +61,13 @@ const routes = [
     ]
   },
   {
+    path: '/venpa-fixer',
+    component: () => import('layouts/MyLayout.vue'),
+    children: [
+      { path: '', component: () => import('pages/VenpaaFixer.vue') }
+    ]
+  },
+  {
     path: '/about',
     component: () => import('layouts/MyLayout.vue'),
     children: [

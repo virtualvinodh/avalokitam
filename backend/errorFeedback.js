@@ -3,6 +3,17 @@ const VILAM_FEET = ['கூவிளம்', 'கருவிளம்']
 const KAY_FEET = ['தேமாங்காய்', 'புளிமாங்காய்', 'கூவிளங்காய்', 'கருவிளங்காய்']
 const ALL_VALID_FEET = [...MA_FEET, ...VILAM_FEET, ...KAY_FEET]
 
+const FOOT_PATTERN = {
+  'தேமா': 'நேர்-நேர்',
+  'புளிமா': 'நிரை-நேர்',
+  'கூவிளம்': 'நேர்-நிரை',
+  'கருவிளம்': 'நிரை-நிரை',
+  'தேமாங்காய்': 'நேர்-நேர்-நேர்',
+  'புளிமாங்காய்': 'நிரை-நேர்-நேர்',
+  'கூவிளங்காய்': 'நேர்-நிரை-நேர்',
+  'கருவிளங்காய்': 'நிரை-நிரை-நேர்'
+}
+
 const LAST_FOOT_TYPES = ['நாள்', 'மலர்', 'காசு', 'பிறப்பு']
 const LAST_FOOT_NIRAI = ['மலர்', 'பிறப்பு'] // start நிரை → need மா-type before them
 const LAST_FOOT_NER   = ['நாள்', 'காசு']    // start நேர்  → need விளம்/காய்-type before them
@@ -30,14 +41,6 @@ function bondValid (prevName, currName) {
   return false
 }
 
-function getPrevFoot (lines, lineIdx, footIdx) {
-  if (footIdx >= 0) return lines[lineIdx].feet[footIdx]
-  if (lineIdx > 0) {
-    const prevLine = lines[lineIdx - 1]
-    return prevLine.feet[prevLine.feet.length - 1]
-  }
-  return null
-}
 
 function footLabel (foot) {
   const syls = foot.syllables.map(s => `${s.text}(${s.type})`).join(' ')
@@ -48,31 +51,48 @@ function footLabel (foot) {
 //   bondValid(leftAnchorName, seq[0]) AND
 //   bondValid(seq[i], seq[i+1]) for all i AND
 //   bondValid(seq[-1], rightAnchorName) if rightAnchorName is given
+//
+// Returns all valid foot-name sequences of length chainLength (up to MAX_TOTAL).
+// For short chains this is exhaustive; for long ones the variety-first DFS
+// surfaces the most diverse solutions first before hitting the cap.
 function findChainFixes (leftAnchorName, chainLength, rightAnchorName) {
-  const solutions = []
-  const MAX = 6
+  const MAX_TOTAL = 16
 
-  function dfs (pos, prevName, path) {
-    if (solutions.length >= MAX) return
-    if (pos === chainLength) {
-      if (!rightAnchorName || bondValid(prevName, rightAnchorName)) {
-        solutions.push([...path])
+  const anchorCls = footClass(leftAnchorName)
+  const anchorReq = anchorCls === 'மா' ? 'நிரை' : (anchorCls === 'விளம்' || anchorCls === 'காய்') ? 'நேர்' : null
+  if (!anchorReq) return []
+
+  const validFirstFeet = ALL_VALID_FEET.filter(f => firstSylOfFoot(f) === anchorReq)
+  const perBucket = Math.max(1, Math.ceil(MAX_TOTAL / validFirstFeet.length))
+  const solutions = []
+
+  for (const firstFoot of validFirstFeet) {
+    const bucketStart = solutions.length
+
+    function dfs (pos, prevName, path) {
+      if (solutions.length - bucketStart >= perBucket) return
+      if (pos === chainLength) {
+        if (!rightAnchorName || bondValid(prevName, rightAnchorName)) {
+          solutions.push([...path])
+        }
+        return
       }
-      return
-    }
-    const cls = footClass(prevName)
-    const req = cls === 'மா' ? 'நிரை' : (cls === 'விளம்' || cls === 'காய்') ? 'நேர்' : null
-    if (!req) return
-    for (const foot of ALL_VALID_FEET) {
-      if (firstSylOfFoot(foot) === req) {
+      const cls = footClass(prevName)
+      const req = cls === 'மா' ? 'நிரை' : (cls === 'விளம்' || cls === 'காய்') ? 'நேர்' : null
+      if (!req) return
+      // prefer feet different from prevName first to avoid boring all-same chains
+      const candidates = ALL_VALID_FEET.filter(f => firstSylOfFoot(f) === req)
+      const ordered = [...candidates.filter(f => f !== prevName), ...candidates.filter(f => f === prevName)]
+      for (const foot of ordered) {
         path.push(foot)
         dfs(pos + 1, foot, path)
         path.pop()
       }
     }
+
+    dfs(1, firstFoot, [firstFoot])
   }
 
-  dfs(0, leftAnchorName, [])
   return solutions
 }
 
@@ -127,10 +147,7 @@ function formatFeedback (analysis) {
     sections.push('INVALID FOOT TYPES:\n' + footTypeErrors.join('\n'))
   }
 
-  // ── 4. Bond error chains ──
-  // Flatten all feet with their positions, then sweep for runs of bad bonds.
-  // For each run: find left anchor (foot before run) and right anchor (foot after run),
-  // then enumerate all valid foot sequences that thread both anchors.
+  // ── 4. Bond error chains (minimum-change solutions) ──
   const flatFeet = []
   lines.forEach((line, li) => {
     line.feet.forEach((foot, fi) => flatFeet.push({ foot, li, fi }))
@@ -141,70 +158,76 @@ function formatFeedback (analysis) {
   while (i < flatFeet.length) {
     if (!flatFeet[i].foot.bond || flatFeet[i].foot.bondOk) { i++; continue }
 
-    // Collect the run of consecutive bond errors
     const runStart = i
     while (i < flatFeet.length && flatFeet[i].foot.bond && !flatFeet[i].foot.bondOk) i++
 
-    const chainFeet = flatFeet.slice(runStart, i)
-    const first = chainFeet[0]
-    const last = chainFeet[chainFeet.length - 1]
+    const runFeet = flatFeet.slice(runStart, i)
+    const first = runFeet[0]
+    const last = runFeet[runFeet.length - 1]
+    const n = runFeet.length
 
-    const leftAnchor = getPrevFoot(lines, first.li, first.fi - 1)
-    const rightAnchor = i < flatFeet.length ? flatFeet[i].foot : null
-
-    // Location label
-    let loc
-    if (chainFeet.length === 1) {
-      loc = `Line ${first.li + 1}, Foot ${first.fi + 1}`
-    } else if (first.li === last.li) {
-      loc = `Line ${first.li + 1}, Feet ${first.fi + 1}–${last.fi + 1}`
-    } else {
-      loc = `Line ${first.li + 1} Foot ${first.fi + 1} – Line ${last.li + 1} Foot ${last.fi + 1}`
+    // Find left anchor entry and prevOfAnchor
+    let anchorEntry = null
+    let prevOfAnchorName = null
+    if (first.fi > 0) {
+      const ancFi = first.fi - 1
+      anchorEntry = { li: first.li, fi: ancFi, footName: lines[first.li].feet[ancFi].footName }
+      if (ancFi > 0) prevOfAnchorName = lines[first.li].feet[ancFi - 1].footName
+      else if (first.li > 0) { const pl = lines[first.li - 1]; prevOfAnchorName = pl.feet[pl.feet.length - 1].footName }
+    } else if (first.li > 0) {
+      const prevLi = first.li - 1
+      const prevFi = lines[prevLi].feet.length - 1
+      anchorEntry = { li: prevLi, fi: prevFi, footName: lines[prevLi].feet[prevFi].footName }
+      if (prevFi > 0) prevOfAnchorName = lines[prevLi].feet[prevFi - 1].footName
+      else if (prevLi > 0) { const pl = lines[prevLi - 1]; prevOfAnchorName = pl.feet[pl.feet.length - 1].footName }
     }
 
-    const n = chainFeet.length
-    let msg = `  ${loc} (${n} consecutive invalid bond${n > 1 ? 's' : ''}):\n`
-    msg += `    Left anchor : ${leftAnchor ? footLabel(leftAnchor) : 'none'}\n`
-    if (rightAnchor) msg += `    Right anchor: ${footLabel(rightAnchor)}\n`
-    msg += `    Current     : ${chainFeet.map(e => footLabel(e.foot)).join(' → ')} ✗\n`
+    const rightAnchorFoot = i < flatFeet.length ? flatFeet[i].foot : null
+    const rightAnchorName = rightAnchorFoot ? rightAnchorFoot.footName : null
 
-    const solutions = leftAnchor
-      ? findChainFixes(leftAnchor.footName, n, rightAnchor ? rightAnchor.footName : null)
-      : []
+    let loc
+    if (n === 1) loc = `Line ${first.li + 1}, Foot ${first.fi + 1}`
+    else if (first.li === last.li) loc = `Line ${first.li + 1}, Feet ${first.fi + 1}–${last.fi + 1}`
+    else loc = `Line ${first.li + 1} Foot ${first.fi + 1} – Line ${last.li + 1} Foot ${last.fi + 1}`
 
-    // Special case: bond error INTO the last foot (நாள்/மலர்/காசு/பிறப்பு)
-    if (rightAnchor && LAST_FOOT_TYPES.includes(rightAnchor.footName)) {
-      const lastFootName = rightAnchor.footName
-      const needMaa = LAST_FOOT_NIRAI.includes(lastFootName)
+    let msg = `  ${loc}:\n`
+    msg += `    Bad foot${n > 1 ? 's' : ''}: ${runFeet.map(e => `"${e.foot.footName}" (Line ${e.li + 1} Foot ${e.fi + 1})`).join(', ')}\n`
+
+    // Special case: bond error into last foot
+    if (rightAnchorFoot && LAST_FOOT_TYPES.includes(rightAnchorFoot.footName)) {
+      const needMaa = LAST_FOOT_NIRAI.includes(rightAnchorFoot.footName)
       const validBefore = needMaa ? MA_FEET : [...VILAM_FEET, ...KAY_FEET]
       const aEntry = flatFeet[runStart - 1]
-      const aLoc = aEntry ? `Line ${aEntry.li + 1}, Foot ${aEntry.fi + 1}` : 'preceding foot'
-      msg += `    LAST FOOT BOND: ${lastFootName} starts ${needMaa ? 'நிரை' : 'நேர்'} — the foot immediately before it must be ${needMaa ? 'மா-type' : 'விளம்/காய்-type'}.\n`
-      msg += `    Change ${aLoc} to one of: ${validBefore.join(' / ')}\n`
-    } else if (n === 1) {
-      // Option A: change the chain foot (B) — already in solutions
-      const solsA = solutions.map(s => s[0])
+      const aLoc = aEntry ? `Line ${aEntry.li + 1} Foot ${aEntry.fi + 1}` : 'the preceding foot'
+      msg += `    The last foot of the verse is "${rightAnchorFoot.footName}", which starts with ${needMaa ? 'நிரை' : 'நேர்'} — so the foot before it must be ${needMaa ? 'மா-class' : 'விளம்/காய்-class'}.\n`
+      msg += `    Fix: replace ${aLoc} with a Tamil word of one of these types: ${validBefore.join(' / ')}\n`
+    } else if (anchorEntry) {
+      const anchorCls = footClass(anchorEntry.footName)
+      const anchorReq = anchorCls === 'மா' ? 'நிரை' : 'நேர்'
+      const chainStr = n === 1
+        ? `"${runFeet[0].foot.footName}"`
+        : `[${runFeet.map(e => `"${e.foot.footName}"`).join(' → ')}]`
+      msg += `    bad-bond chain: ${chainStr}\n`
+      msg += `    Left anchor: "${anchorEntry.footName}" (Line ${anchorEntry.li + 1} Foot ${anchorEntry.fi + 1}, ${anchorCls}-class, needs ${anchorReq} next)`
+      if (rightAnchorName) msg += ` | Right anchor: "${rightAnchorName}"`
+      msg += '\n'
 
-      // Option B: change the left anchor (A) to a type that bonds with B and with A's predecessor
-      const prevOfAnchorFoot = runStart >= 2 ? flatFeet[runStart - 2].foot : null
-      const chainFoot = chainFeet[0].foot
-      const solsB = prevOfAnchorFoot
-        ? findChainFixes(prevOfAnchorFoot.footName, 1, chainFoot.footName).map(s => s[0])
-        : ALL_VALID_FEET.filter(f => bondValid(f, chainFoot.footName))
+      const candidates = [anchorEntry, ...runFeet.map(e => ({ li: e.li, fi: e.fi, footName: e.foot.footName }))]
+      const { minChanges, solutions } = findMinChangeSolutions(prevOfAnchorName, candidates, rightAnchorName)
 
-      const aEntry = flatFeet[runStart - 1]
-      const aLoc = `Line ${aEntry.li + 1}, Foot ${aEntry.fi + 1}`
-      const bLoc = `Line ${first.li + 1}, Foot ${first.fi + 1}`
-
-      msg += `    Fix EITHER:\n`
-      if (solsA.length) msg += `    (A) Change ${bLoc} to type: ${solsA.join(' / ')}\n`
-      if (solsB.length) msg += `    (B) Change ${aLoc} to type: ${solsB.join(' / ')}\n`
-      msg += `    (find a Tamil word matching the foot's syllable pattern — do not reuse the current word)\n`
-    } else if (solutions.length) {
-      msg += `    Replace these ${n} feet with one of these valid sequences:\n`
-      solutions.forEach((sol, k) => { msg += `      ${k + 1}. ${sol.join(' → ')}\n` })
+      if (solutions.length === 0) {
+        msg += `    No valid chain found — rewrite the surrounding feet.\n`
+      } else {
+        msg += `    Minimum fix — ${minChanges} change${minChanges !== 1 ? 's' : ''}:\n`
+        solutions.slice(0, 6).forEach((sol, k) => {
+          const changeDesc = sol.filter(s => s.changed)
+            .map(s => `Line ${s.li + 1} Foot ${s.fi + 1} → ${s.foot} (${FOOT_PATTERN[s.foot]})`)
+          msg += `      Option ${k + 1}: ${changeDesc.join('; ')}\n`
+        })
+        msg += `    Replace each marked foot with a new Tamil word of that type — do not reuse the existing word.\n`
+      }
     } else {
-      msg += `    No standard replacement found — rewrite surrounding feet.\n`
+      msg += `    No preceding foot found — rewrite from the start of the line.\n`
     }
 
     chainMessages.push(msg)
@@ -223,4 +246,199 @@ function formatFeedback (analysis) {
   return `METRE DETECTED: ${metreDetected}\n\n` + sections.join('\n\n')
 }
 
-module.exports = { formatFeedback }
+// Returns per-foot constraint suggestions as structured JSON (no text formatting).
+// For each foot with a bad bond, gives: what to change THIS foot to, or what to
+// change the PREVIOUS foot to, so that the bond becomes valid.
+function getSuggestions (analysis) {
+  const { lines } = analysis
+  const flatFeet = []
+  lines.forEach((line, li) => {
+    line.feet.forEach((foot, fi) => flatFeet.push({ foot, li, fi }))
+  })
+
+  const result = []
+
+  flatFeet.forEach((entry, idx) => {
+    const { foot, li, fi } = entry
+    if (!foot.bond || foot.bondOk) return
+
+    const prevFoot = idx > 0 ? flatFeet[idx - 1].foot : null
+    const prevPrevFoot = idx >= 2 ? flatFeet[idx - 2].foot : null
+    const nextFoot = idx < flatFeet.length - 1 ? flatFeet[idx + 1].foot : null
+
+    // Option A: change THIS foot — must bond with prev AND with next (if any)
+    const changeThis = prevFoot && footClass(prevFoot.footName)
+      ? ALL_VALID_FEET.filter(f =>
+          bondValid(prevFoot.footName, f) &&
+          (!nextFoot || bondValid(f, nextFoot.footName))
+        )
+      : []
+
+    // Option B: change PREV foot — must bond with its prev AND with this foot
+    const changePrev = prevFoot && footClass(prevFoot.footName)
+      ? (prevPrevFoot && footClass(prevPrevFoot.footName)
+          ? findChainFixes(prevPrevFoot.footName, 1, foot.footName).map(s => s[0])
+          : ALL_VALID_FEET.filter(f => bondValid(f, foot.footName)))
+      : []
+
+    result.push({
+      li,
+      fi,
+      footName: foot.footName,
+      prevFootName: prevFoot ? prevFoot.footName : null,
+      suggestions: {
+        changeThis: [...new Set(changeThis)],
+        changePrev: [...new Set(changePrev)]
+      }
+    })
+  })
+
+  return result
+}
+
+// Finds minimal-change solutions for a bad-bond run.
+// Searches over [anchor, run[0], ..., run[N-1]] — at each position tries keeping
+// the original foot first (prefer no change), then alternatives. Groups by change
+// count and returns only the minimum-change solutions (up to MAX_SOLUTIONS).
+function findMinChangeSolutions (prevAnchorName, candidates, rightAnchorName) {
+  const MAX_SOLUTIONS = 16
+  const byCount = {}
+  let globalMin = Infinity
+
+  function dfs (idx, prevName, path, changes) {
+    if (changes > globalMin) return
+    if (byCount[globalMin] && byCount[globalMin].length >= MAX_SOLUTIONS) return
+
+    if (idx === candidates.length) {
+      if (!rightAnchorName || bondValid(prevName, rightAnchorName)) {
+        if (changes < globalMin) {
+          for (const k of Object.keys(byCount)) {
+            if (Number(k) > changes) delete byCount[k]
+          }
+          globalMin = changes
+        }
+        if (!byCount[changes]) byCount[changes] = []
+        if (byCount[changes].length < MAX_SOLUTIONS) {
+          byCount[changes].push(path.slice())
+        }
+      }
+      return
+    }
+
+    const { footName: original, li, fi } = candidates[idx]
+
+    // Try keeping original first — prefer minimal changes
+    if (bondValid(prevName, original)) {
+      path.push({ li, fi, foot: original, changed: false })
+      dfs(idx + 1, original, path, changes)
+      path.pop()
+    }
+
+    // Try alternatives (variety-first: prefer feet different from prevName)
+    const cls = footClass(prevName)
+    const req = cls === 'மா' ? 'நிரை' : (cls === 'விளம்' || cls === 'காய்') ? 'நேர்' : null
+    if (req) {
+      const alts = ALL_VALID_FEET.filter(f => f !== original && firstSylOfFoot(f) === req)
+      const ordered = [...alts.filter(f => f !== prevName), ...alts.filter(f => f === prevName)]
+      for (const foot of ordered) {
+        path.push({ li, fi, foot, changed: true })
+        dfs(idx + 1, foot, path, changes + 1)
+        path.pop()
+      }
+    }
+  }
+
+  if (prevAnchorName) {
+    dfs(0, prevAnchorName, [], 0)
+  } else if (candidates.length > 0) {
+    // No left constraint on anchor — keep it fixed, search run feet only
+    const anc = candidates[0]
+    dfs(1, anc.footName, [{ li: anc.li, fi: anc.fi, foot: anc.footName, changed: false }], 0)
+  }
+
+  return {
+    minChanges: globalMin === Infinity ? 0 : globalMin,
+    solutions: globalMin === Infinity ? [] : (byCount[globalMin] || [])
+  }
+}
+
+// Returns bad-bond runs with minimal-change solutions.
+// Each solution is an array of {li, fi, foot, changed} covering [anchor, ...runFeet],
+// where changed=true marks positions that need to be replaced.
+function getRunSuggestions (analysis) {
+  const { lines } = analysis
+  const flatFeet = []
+  lines.forEach((line, li) => {
+    line.feet.forEach((foot, fi) => flatFeet.push({ foot, li, fi }))
+  })
+
+  const runs = []
+  let i = 0
+  while (i < flatFeet.length) {
+    if (!flatFeet[i].foot.bond || flatFeet[i].foot.bondOk) { i++; continue }
+
+    const runStart = i
+    while (i < flatFeet.length && flatFeet[i].foot.bond && !flatFeet[i].foot.bondOk) i++
+
+    const runFeet = flatFeet.slice(runStart, i)
+    const first = runFeet[0]
+
+    let leftAnchor = null
+    let prevOfAnchorName = null
+
+    if (first.fi > 0) {
+      const ancFi = first.fi - 1
+      leftAnchor = { li: first.li, fi: ancFi, footName: lines[first.li].feet[ancFi].footName }
+      if (ancFi > 0) {
+        prevOfAnchorName = lines[first.li].feet[ancFi - 1].footName
+      } else if (first.li > 0) {
+        const pl = lines[first.li - 1]
+        prevOfAnchorName = pl.feet[pl.feet.length - 1].footName
+      }
+    } else if (first.li > 0) {
+      const prevLi = first.li - 1
+      const prevFi = lines[prevLi].feet.length - 1
+      leftAnchor = { li: prevLi, fi: prevFi, footName: lines[prevLi].feet[prevFi].footName }
+      if (prevFi > 0) {
+        prevOfAnchorName = lines[prevLi].feet[prevFi - 1].footName
+      } else if (prevLi > 0) {
+        const pl = lines[prevLi - 1]
+        prevOfAnchorName = pl.feet[pl.feet.length - 1].footName
+      }
+    }
+
+    const rightEntry = i < flatFeet.length ? flatFeet[i] : null
+    const rightAnchorName = rightEntry ? rightEntry.foot.footName : null
+
+    // candidates = [anchor, run[0], ..., run[N-1]]
+    const candidates = []
+    if (leftAnchor) {
+      candidates.push({ li: leftAnchor.li, fi: leftAnchor.fi, footName: leftAnchor.footName })
+    }
+    runFeet.forEach(e => candidates.push({ li: e.li, fi: e.fi, footName: e.foot.footName }))
+
+    // For long runs, solve only the first 2 feet (use run[2] as right anchor).
+    // The user fixes that pair, re-scans, and gets the next step automatically.
+    const PAIRWISE_THRESHOLD = 4
+    const isPartial = leftAnchor && runFeet.length > PAIRWISE_THRESHOLD
+    const effectiveCandidates = isPartial ? candidates.slice(0, 3) : candidates
+    const effectiveRightAnchor = isPartial ? runFeet[2].foot.footName : rightAnchorName
+
+    const { minChanges, solutions } = leftAnchor
+      ? findMinChangeSolutions(prevOfAnchorName, effectiveCandidates, effectiveRightAnchor)
+      : { minChanges: 0, solutions: [] }
+
+    runs.push({
+      positions: runFeet.map(e => ({ li: e.li, fi: e.fi })),
+      leftAnchor,
+      minChanges,
+      solutions,
+      isPartial,
+      totalLength: runFeet.length
+    })
+  }
+
+  return runs
+}
+
+module.exports = { formatFeedback, getSuggestions, getRunSuggestions }
