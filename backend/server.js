@@ -1,7 +1,8 @@
 require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
-const { runLoop } = require('./geminiLoop')
+const { runLoop, callParser, parseXML } = require('./geminiLoop')
+const { getSuggestions, getRunSuggestions } = require('./errorFeedback')
 
 const app = express()
 app.use(cors())
@@ -60,6 +61,20 @@ function getSessionUsage (req) {
   if (!id) return null
   return { id, count: getCount(id) }
 }
+
+// POST /venpa/suggest — pure constraint solver, no AI involved.
+// Returns per-foot suggestions for fixing வெண்டளை violations.
+app.post('/venpa/suggest', async (req, res) => {
+  const { verse } = req.body
+  if (!verse) return res.status(400).json({ error: 'verse required' })
+  try {
+    const xml = await callParser(verse)
+    const analysis = await parseXML(xml)
+    res.json({ suggestions: getSuggestions(analysis), runs: getRunSuggestions(analysis) })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', model: process.env.GEMINI_MODEL, stats })

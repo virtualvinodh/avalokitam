@@ -55,6 +55,14 @@
             <q-item-label>வெண்பா AI</q-item-label>
           </q-item-section>
         </q-item>
+        <q-item class="tamil" to="/venpa-fixer" active-class="bg-grey-4">
+          <q-item-section avatar>
+            <q-icon name="build" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>வெண்பா திருத்தி</q-item-label>
+          </q-item-section>
+        </q-item>
         <q-item class="tamil" to="/search" active-class="bg-grey-4">
           <q-item-section avatar>
             <q-icon name="search" />
