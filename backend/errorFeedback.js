@@ -441,4 +441,4 @@ function getRunSuggestions (analysis) {
   return runs
 }
 
-module.exports = { formatFeedback, getSuggestions, getRunSuggestions }
+module.exports = { formatFeedback, getSuggestions, getRunSuggestions, findMinChangeSolutions }
