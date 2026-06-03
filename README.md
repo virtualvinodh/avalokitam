@@ -73,6 +73,33 @@ npm run test:integration  # 8 integration tests — requires PHP parser running
 npm test                  # both
 ```
 
+# Render deployment
+
+The app ships as a single Docker container (PHP parser + Node backend + Quasar SPA all on port 8080).
+
+## Steps
+
+1. **Create a Web Service** on [render.com](https://render.com), connect your GitHub repo.
+2. Render auto-detects the `Dockerfile` — no build command needed.
+3. Set **Port** to `8080`.
+4. Add these **Environment Variables** in the Render dashboard:
+
+| Variable | Value |
+|----------|-------|
+| `GEMINI_API_KEY` | your Gemini API key |
+| `GEMINI_MODEL` | e.g. `gemini-2.5-pro` |
+| `PHP_API_URL` | `http://localhost:8080/api.php` (PHP runs inside the same container) |
+| `PORT` | `3001` (Node backend port — Apache proxies to it internally) |
+| `DEV_TOKEN` | optional — set a secret string to bypass AI usage limits |
+
+5. Deploy. Render builds the image and starts the container.
+
+## Notes
+
+- `GEMINI_API_KEY` must be set in the Render dashboard — never bake it into the image.
+- `PHP_API_URL` points to `localhost` because the PHP parser and Node backend share the same container.
+- The free Render tier spins down after inactivity. The $7/month starter plan keeps it always on.
+
 # GAE
 
 COPY files from phpbackend to dist, compile the frontend and then deploy to GAE
