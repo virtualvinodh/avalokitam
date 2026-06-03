@@ -162,6 +162,9 @@
                         {{ runLocation(run) }}
                         <span v-if="run.minChanges" class="min-changes-badge">{{ run.minChanges }} மாற்றம்</span>
                       </div>
+                      <div v-if="run.solutions && run.solutions.length" class="text-caption text-grey-5 tamil q-mb-xs">
+                        பரிந்துரை{{ run.solutions.length > 1 ? 'கள்' : '' }}
+                      </div>
                       <div v-for="(sol, si) in run.solutions" :key="'cs' + si"
                         class="chain-row tamil"
                         :class="activeChainKey === (ri + ':' + si) ? 'chain-row-active' : ''"
@@ -287,6 +290,9 @@
                       <div v-if="!run.solutions || run.solutions.length === 0" class="text-caption text-grey-6 tamil q-pl-sm">
                         சீர்த்தொடர் இல்லை — சுற்றியுள்ள சீர்களை மாற்றவும்
                       </div>
+                      <div v-if="run.solutions && run.solutions.length" class="text-caption text-grey-5 tamil q-mb-xs">
+                        பரிந்துரை{{ run.solutions.length > 1 ? 'கள்' : '' }}
+                      </div>
                       <div v-for="(sol, si) in run.solutions" :key="'s' + si"
                         class="chain-row tamil"
                         :class="activeChainKey === (ri + ':' + si) ? 'chain-row-active' : ''"
@@ -328,7 +334,7 @@
             </q-chip>
           </div>
           <div class="tamil q-mt-md q-pa-md bg-grey-2 rounded-borders text-body1"
-            style="white-space: pre-line; display: inline-block; min-width: 300px">{{ composedVerse }}</div>
+            style="white-space: pre-line; display: inline-block; max-width: 100%">{{ composedVerse }}</div>
         </div>
         <div class="q-mt-lg">
           <div class="text-subtitle2 tamil q-mb-sm">வெண்பா விதிகள்</div>
@@ -469,8 +475,8 @@
 /* ── Compose grid ── */
 .compose-grid { max-width: 600px; }
 .compose-line { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
-.compose-cell { display: flex; flex-direction: column; align-items: center; min-width: 100px; }
-.compose-input { width: 100px; }
+.compose-cell { display: flex; flex-direction: column; align-items: center; flex: 1 1 80px; min-width: 0; }
+.compose-input { width: 100%; min-width: 72px; }
 .compose-foot-label { font-size: 11px; color: #757575; margin-top: 2px; min-height: 16px; }
 .compose-line-arrow { font-size: 120%; color: #bdbdbd; padding: 2px 0 2px 4px; }
 .compose-cross-bond { font-size: 11px; padding-left: 4px; }
