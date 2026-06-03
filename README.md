@@ -20,6 +20,59 @@ The project can be accessed at http://www.avalokitam.com
 
 பண்டைய தமிழ் மஹாயான பௌத்தர்களால் தமிழ் மொழியை அகத்தியருக்கு உபதேசித்தவராக கருதப்பட்ட, சகலபுத்தர்களின் மஹாகருணையின் உருவகமாக விளங்கும் பகவான் போதிசத்துவர் அவலோகிதேஸ்வரரின் பெயர் இம்மென்பொருளுக்கு இடப்பட்டது.
 
+# Development setup
+
+## Quick start
+
+```bash
+./dev.sh
+```
+
+Starts all three services with colour-coded output:
+
+| Service | URL | Notes |
+|---------|-----|-------|
+| PHP parser | `http://localhost:8080` | via Docker or local `php` |
+| Node backend | `http://localhost:3001` | reads `backend/.env` |
+| Quasar frontend | `http://localhost:9000` | HMR |
+
+## Environment variables
+
+Copy the example and fill in your key:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+| Variable | Description |
+|----------|-------------|
+| `GEMINI_API_KEY` | Gemini API key (required for AI features) |
+| `GEMINI_MODEL` | Model name, e.g. `gemini-2.5-pro` |
+| `PHP_API_URL` | URL of the Tamil prosody parser, e.g. `http://localhost:8080/api.php` |
+| `PORT` | Node backend port (default `3001`) |
+| `DEV_TOKEN` | Optional dev token to bypass AI usage limits |
+
+`backend/.env` is gitignored — never commit it. For production (Render), set these in the Render dashboard.
+
+## PHP parser
+
+All parser calls go through `PHP_API_URL`. This covers:
+- The AI generation/fix loop (`/ai/stream`)
+- The VenpaaFixer constraint solver (`/venpa/suggest`)
+- Integration tests
+
+Locally the parser runs on port `8080` (Docker container or `php -S localhost:8080 -t phpbackend`). In production, point `PHP_API_URL` at your deployed parser.
+
+## Running tests
+
+From the `backend/` directory:
+
+```bash
+npm run test:unit         # 10 unit tests — no parser needed, runs in ~50ms
+npm run test:integration  # 8 integration tests — requires PHP parser running
+npm test                  # both
+```
+
 # GAE
 
 COPY files from phpbackend to dist, compile the frontend and then deploy to GAE
