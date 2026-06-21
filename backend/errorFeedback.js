@@ -421,6 +421,10 @@ function getRunSuggestions (analysis) {
       }
     }
 
+    // If the left anchor itself has an unknown foot type, this bond error is a
+    // downstream symptom of a foot error — skip it; fix the foot error first.
+    if (leftAnchor && footClass(leftAnchor.footName) === null) { i++; continue }
+
     const rightEntry = i < flatFeet.length ? flatFeet[i] : null
     const rightAnchorName = rightEntry ? rightEntry.foot.footName : null
 

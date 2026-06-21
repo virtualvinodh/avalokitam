@@ -22,7 +22,8 @@ function addUsage (acc, u) {
   acc.thoughtsTokenCount   += u.thoughtsTokenCount   || 0
 }
 
-async function callGemini (prompt, thinkingLevel = 'minimal', label = '') {
+async function callGemini (prompt, thinkingLevel, label = '') {
+  thinkingLevel = thinkingLevel || process.env.GEMINI_THINKING_LEVEL || 'low'
   const model = process.env.GEMINI_MODEL || 'gemini-2.5-pro'
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`
   const body = {
@@ -227,7 +228,7 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
 
     let generated, thinking
     try {
-      ;({ text: generated, thinking } = await gemini(prompt, 'low', `attempt ${attempt}`))
+      ;({ text: generated, thinking } = await gemini(prompt, null,`attempt ${attempt}`))
     } catch (err) {
       throw new Error(`Gemini API error on attempt ${attempt}: ${err.message}`)
     }
@@ -276,7 +277,7 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
       await send({ type: 'thinking', attempt: nextAttempt, prompt: polishPrompt })
 
       let polished, polishThinking
-      try { ;({ text: polished, thinking: polishThinking } = await gemini(polishPrompt, 'low', 'polish')) } catch (_) {
+      try { ;({ text: polished, thinking: polishThinking } = await gemini(polishPrompt, null,'polish')) } catch (_) {
         return done({ success: true, verse: validVerse, metreType: validMetreType, iterations })
       }
 
@@ -307,7 +308,7 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
         await send({ type: 'thinking', attempt: nextAttempt, prompt: fixPrompt })
 
         let fixed, fixThinking
-        try { ;({ text: fixed, thinking: fixThinking } = await gemini(fixPrompt, 'low', `fix-${f}`)) } catch (_) { break }
+        try { ;({ text: fixed, thinking: fixThinking } = await gemini(fixPrompt, null,`fix-${f}`)) } catch (_) { break }
 
         await send({ type: 'checking', attempt: nextAttempt, verse: fixed, thinking: fixThinking })
 

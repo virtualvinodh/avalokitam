@@ -6,21 +6,21 @@
       <q-step :name="1" title="உள்ளிடு" icon="edit" :done="step > 1">
 
         <!-- Mode toggle -->
-        <div class="row q-mb-md">
-          <q-btn-toggle
-            v-model="inputMode"
-            toggle-color="primary"
-            :options="[{ label: 'திருத்து', value: 'fix' }, { label: 'இயற்று', value: 'compose' }]"
+        <q-tabs v-model="inputMode" dense align="left" active-color="primary"
+          indicator-color="primary" class="tamil q-mb-md" narrow-indicator>
+          <q-tab name="fix" label="திருத்து" />
+          <q-tab name="compose" label="இயற்று" />
+        </q-tabs>
+        <div v-if="inputMode === 'compose'" class="row items-center q-gutter-xs q-mb-sm">
+          <q-chip
+            v-for="t in [{ label: 'வெண்பா', value: 'venpaa' }, { label: 'குறள்', value: 'kuralpaa' }]"
+            :key="t.value"
+            dense clickable :selected="composeType === t.value"
+            :color="composeType === t.value ? 'blue-grey-7' : 'grey-3'"
+            :text-color="composeType === t.value ? 'white' : 'grey-7'"
             class="tamil"
-            dense unelevated
-          />
-          <q-btn-toggle v-if="inputMode === 'compose'"
-            v-model="composeType"
-            toggle-color="blue-grey-7"
-            :options="[{ label: 'வெண்பா', value: 'venpaa' }, { label: 'குறள்', value: 'kuralpaa' }]"
-            class="tamil q-ml-md"
-            dense unelevated
-          />
+            @click="composeType = t.value"
+          >{{ t.label }}</q-chip>
         </div>
 
         <!-- Fix mode: textarea -->
