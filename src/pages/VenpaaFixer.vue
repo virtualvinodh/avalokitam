@@ -338,7 +338,21 @@
 
       <!-- ── Step 4: Done ───────────────────────────────────────────── -->
       <q-step :name="4" title="முடிவு" icon="celebration">
-        <div class="text-center q-pa-md">
+        <div v-if="!allValid" class="q-pa-md">
+          <div class="text-center q-mb-md">
+            <q-icon name="warning" color="warning" size="48px" />
+            <div class="text-h6 tamil q-mt-sm text-warning">சில விதிகள் பொருந்தவில்லை.</div>
+          </div>
+          <div v-for="(rule, ri) in venpaRules.filter(r => r.result !== '1' && r.result !== 'info')" :key="ri"
+            class="row items-start q-mb-xs">
+            <q-icon name="cancel" color="negative" size="18px" class="q-mr-sm q-mt-xs" />
+            <span class="tamil text-body2 col">{{ rule.text }}</span>
+          </div>
+          <q-stepper-navigation class="q-mt-md">
+            <q-btn flat @click="step = hasClassErrors ? 2 : 3" color="primary" label="← திரும்பு" class="tamil" />
+          </q-stepper-navigation>
+        </div>
+        <div v-else class="text-center q-pa-md">
           <q-icon name="celebration" color="positive" size="56px" />
           <div class="text-h6 tamil q-mt-sm text-positive">வெண்பா நிறைவுற்றது!</div>
           <div v-if="detectedMetre" class="q-mt-sm">
@@ -348,19 +362,11 @@
           </div>
           <div class="tamil q-mt-md q-pa-md bg-grey-2 rounded-borders text-body1"
             style="white-space: pre-line; display: inline-block; max-width: 100%">{{ composedVerse }}</div>
+          <q-stepper-navigation class="q-mt-lg">
+            <q-btn flat @click="restart" color="grey" label="மீண்டும்" class="tamil q-mr-sm" />
+            <q-btn @click="copyVerse" color="primary" icon="content_copy" label="நகலெடு" class="tamil" />
+          </q-stepper-navigation>
         </div>
-        <div class="q-mt-lg">
-          <div class="text-subtitle2 tamil q-mb-sm">வெண்பா விதிகள்</div>
-          <div v-for="(rule, ri) in venpaRules" :key="ri" class="row items-start q-mb-xs">
-            <q-icon :name="ruleIcon(rule.result)" :color="ruleColor(rule.result)"
-              size="18px" class="q-mr-sm q-mt-xs" />
-            <span class="tamil text-body2 col">{{ rule.text }}</span>
-          </div>
-        </div>
-        <q-stepper-navigation class="q-mt-md">
-          <q-btn flat @click="restart" color="grey" label="மீண்டும்" class="tamil q-mr-sm" />
-          <q-btn @click="copyVerse" color="primary" icon="content_copy" label="நகலெடு" class="tamil" />
-        </q-stepper-navigation>
       </q-step>
 
     </q-stepper>
@@ -724,7 +730,7 @@ export default {
       )
     },
     allValid () {
-      return this.allFeetValid && this.allLinkagesValid
+      return this.allFeetValid && this.linkageRuns.length === 0
     },
     composedVerse () {
       return this.editableWords.map(line => line.join(' ')).join('\n')
@@ -782,6 +788,9 @@ export default {
         })
       })
       return errors
+    },
+    hasClassErrors () {
+      return this.classErrors.length > 0
     },
     hasErrors () {
       return this.lines.length > 0 && (this.linkageRuns.length > 0 || this.classErrors.length > 0)
@@ -1004,6 +1013,7 @@ export default {
         await this.fetchSuggestions()
         if (this.classErrors.length === 0) {
           await this.checkBondsForFix()
+          if (this.linkageRuns.length === 0) this.step = 4
         } else {
           this.step = 2
         }
