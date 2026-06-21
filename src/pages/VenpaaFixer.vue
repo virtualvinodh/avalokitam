@@ -2,36 +2,29 @@
   <q-page class="q-pa-md">
     <q-stepper v-model="step" flat animated header-nav class="tamil">
 
-      <!-- ── Step 1: Entry picker ─────────────────────────────────── -->
+      <!-- ── Step 1: Entry ─────────────────────────────────────────── -->
       <q-step :name="1" title="உள்ளிடு" icon="edit" :done="step > 1">
 
-        <!-- ── 3-card picker ── -->
-        <div v-if="entryMode === null" class="row q-gutter-md justify-center q-mt-sm">
-          <q-card class="entry-card cursor-pointer" flat bordered @click="entryMode = 'fix'">
-            <q-card-section class="text-center">
-              <q-icon name="build" size="36px" color="grey-7" />
-              <div class="text-subtitle1 tamil q-mt-sm">வெண்பா திருத்து</div>
-              <div class="text-caption text-grey-6 tamil q-mt-xs">உள்ளிட்ட பாவின் தளையை சரிசெய்க</div>
-            </q-card-section>
-          </q-card>
-          <q-card class="entry-card cursor-pointer" flat bordered @click="startCompose('venpaa')">
-            <q-card-section class="text-center">
-              <q-icon name="create" size="36px" color="grey-7" />
-              <div class="text-subtitle1 tamil q-mt-sm">புதிய வெண்பா</div>
-              <div class="text-caption text-grey-6 tamil q-mt-xs">நான்கு அடிகளில் வெண்பா இயற்றுக</div>
-            </q-card-section>
-          </q-card>
-          <q-card class="entry-card cursor-pointer" flat bordered @click="startCompose('kuralpaa')">
-            <q-card-section class="text-center">
-              <q-icon name="short_text" size="36px" color="grey-7" />
-              <div class="text-subtitle1 tamil q-mt-sm">குறள் வெண்பா</div>
-              <div class="text-caption text-grey-6 tamil q-mt-xs">இரண்டு அடிகளில் குறள் இயற்றுக</div>
-            </q-card-section>
-          </q-card>
+        <!-- Mode toggle -->
+        <div class="row q-mb-md">
+          <q-btn-toggle
+            v-model="inputMode"
+            toggle-color="primary"
+            :options="[{ label: 'திருத்து', value: 'fix' }, { label: 'இயற்று', value: 'compose' }]"
+            class="tamil"
+            dense unelevated
+          />
+          <q-btn-toggle v-if="inputMode === 'compose'"
+            v-model="composeType"
+            toggle-color="blue-grey-7"
+            :options="[{ label: 'வெண்பா', value: 'venpaa' }, { label: 'குறள்', value: 'kuralpaa' }]"
+            class="tamil q-ml-md"
+            dense unelevated
+          />
         </div>
 
-        <!-- ── Fix mode: textarea ── -->
-        <div v-if="entryMode === 'fix'" class="row justify-center">
+        <!-- Fix mode: textarea -->
+        <div v-if="inputMode === 'fix'" class="row justify-center">
           <div class="col-12 col-md-6">
             <q-input
               v-model="text"
@@ -59,154 +52,36 @@
             </div>
           </div>
         </div>
-        <q-stepper-navigation v-if="entryMode === 'fix'">
-          <q-btn flat color="grey" icon="arrow_back" @click="entryMode = null" class="q-mr-sm" />
-          <q-btn @click="goToStep2" color="primary" label="அடுத்து: திருத்து"
-            :disable="!step1Valid" class="tamil" />
+
+        <!-- Compose mode: blank word grid -->
+        <div v-else>
+          <div v-for="(lineWords, li) in editableWords" :key="'cg' + li" class="q-mb-sm">
+            <div class="compose-line">
+              <div v-for="(word, fi) in lineWords" :key="'cw' + fi" class="compose-cell">
+                <q-input
+                  :value="word"
+                  outlined dense class="tamil compose-input"
+                  input-class="text-center"
+                  :label="'சீர் ' + (fi + 1)"
+                  @input="updateWord(li, fi, $event)"
+                />
+              </div>
+            </div>
+            <div v-if="li < editableWords.length - 1" class="q-mt-xs q-ml-xs tamil text-grey-5">⤓</div>
+          </div>
+        </div>
+
+        <q-stepper-navigation class="q-mt-md">
+          <q-btn @click="goToStep2" color="primary" label="அடுத்து →"
+            :disable="inputMode === 'fix' ? !step1Valid : !allBoxesFilled" class="tamil" />
           <q-spinner-oval v-show="showProgress" color="grey-8" size="1.5em" class="q-ml-sm" />
         </q-stepper-navigation>
       </q-step>
 
-      <!-- ── Step 2: வாய்ப்பாடு / Compose ──────────────────────────── -->
+      <!-- ── Step 2: வாய்ப்பாடு ──────────────────────────────────────── -->
       <q-step :name="2" title="வாய்ப்பாடு" icon="spellcheck" :done="step > 2">
 
-        <!-- ── Compose phased layout ── -->
-        <div v-if="composing">
-
-          <!-- Phase indicator -->
-          <div class="row items-center q-gutter-xs q-mb-md">
-            <q-chip dense :color="composePhase >= 1 ? 'grey-8' : 'grey-4'" text-color="white" class="tamil">1. நிரப்பு</q-chip>
-            <q-icon name="chevron_right" color="grey-5" />
-            <q-chip dense :color="composePhase >= 2 ? 'blue-8' : 'grey-4'" text-color="white" class="tamil">2. சீர் வகை</q-chip>
-            <q-icon name="chevron_right" color="grey-5" />
-            <q-chip dense :color="composePhase >= 3 ? 'orange-8' : 'grey-4'" text-color="white" class="tamil">3. தளை</q-chip>
-          </div>
-
-          <div class="row q-col-gutter-md">
-
-            <!-- Grid + buttons -->
-            <div class="col-12 col-md-7">
-              <div class="q-mb-md">
-                <div v-for="(lineWords, li) in editableWords" :key="'cl' + li" class="q-mb-xs">
-
-                  <!-- Cross-line bond from previous line -->
-                  <div v-if="li > 0 && composePhase === 3" class="compose-cross-bond q-mb-xs">
-                    <span :class="crossBondOk(li) ? 'text-positive' : 'text-negative'">
-                      ⤒ {{ crossBondOk(li) ? '✓' : '✗' }}
-                    </span>
-                  </div>
-
-                  <div class="compose-line">
-                    <template v-for="(word, fi) in lineWords">
-                      <div :key="'cf' + fi" class="compose-cell">
-                        <q-input
-                          :value="wordAt(li, fi)"
-                          outlined dense class="tamil compose-input"
-                          input-class="text-center"
-                          :label="'சீர் ' + (fi + 1)"
-                          :color="composeCellColor(li, fi)"
-                          :bg-color="composeCellBg(li, fi)"
-                          @input="updateWord(li, fi, $event)"
-                        />
-                        <div class="compose-foot-label tamil">{{ composePhase >= 2 ? composeFootClass(li, fi) : '' }}</div>
-                      </div>
-                      <!-- Bond arrow to next cell (same line) -->
-                      <div v-if="fi < lineWords.length - 1 && composePhase === 3" :key="'cb' + fi"
-                        class="compose-bond-con"
-                        :class="inlineBondOk(li, fi + 1) ? 'bond-ok' : 'bond-bad'">
-                        <div class="compose-bond-line"></div>
-                        <span class="compose-bond-tick">{{ inlineBondOk(li, fi + 1) ? '✓' : '✗' }}</span>
-                        <div class="compose-bond-line"></div>
-                      </div>
-                    </template>
-                  </div>
-
-                  <div v-if="li < editableWords.length - 1" class="compose-line-arrow"
-                    :class="composePhase === 3 && li < editableWords.length - 2 ? (crossBondOk(li + 1) ? 'text-positive' : 'text-grey-5') : 'text-grey-5'">⤓</div>
-                </div>
-              </div>
-
-              <!-- Phase navigation -->
-              <div class="row items-center q-gutter-sm">
-                <q-btn v-if="composePhase > 1" flat dense color="grey" icon="arrow_back" size="sm" class="tamil" @click="composePhase--" />
-                <q-btn v-if="composePhase === 1" unelevated color="grey-8"
-                  label="சீர் வகை சரிபார்க்க →" :disable="!allBoxesFilled"
-                  class="tamil" @click="checkClasses" />
-                <q-btn v-if="composePhase === 2" unelevated color="blue-8"
-                  label="தளை சரிபார்க்க →" :disable="!allFeetValid"
-                  class="tamil" @click="checkBonds" />
-                <q-btn v-if="composePhase === 3" unelevated color="positive"
-                  label="முடிவு" :disable="!allValid"
-                  class="tamil" @click="step = 4" />
-                <q-spinner-oval v-show="showProgress" color="grey-8" size="1.5em" />
-              </div>
-            </div>
-
-            <!-- Sidebar -->
-            <div class="col-12 col-md-5">
-
-              <!-- Phase 1: structure rules -->
-              <q-card v-if="composePhase === 1" flat bordered>
-                <q-card-section class="q-pa-sm">
-                  <div class="sidebar-section-label tamil">வெண்பா அமைப்பு</div>
-                  <div class="tamil text-body2 q-mb-xs">• முதல் 3 அடி — 4 சீர் வீதம் (அளவடி)</div>
-                  <div class="tamil text-body2 q-mb-md">• ஈற்றடி — 3 சீர் (சிந்தடி)</div>
-                  <div class="text-caption text-grey-6 tamil">எல்லா கட்டங்களையும் நிரப்பிய பின் அடுத்த கட்டத்திற்கு செல்லுங்கள்.</div>
-                </q-card-section>
-              </q-card>
-
-              <!-- Phase 2: foot type reference -->
-              <q-card v-if="composePhase === 2" flat bordered>
-                <q-card-section class="q-pa-sm">
-                  <div class="sidebar-section-label tamil">சீர் வகைகள்</div>
-                  <table class="foot-ref-table q-mb-sm">
-                    <tr v-for="row in footRefRows" :key="row.name">
-                      <td class="tamil text-weight-bold" style="padding-right:10px">{{ row.name }}</td>
-                      <td class="text-grey-6" style="font-size:11px;font-family:monospace">{{ row.pattern }}</td>
-                    </tr>
-                  </table>
-                  <div class="sidebar-section-label tamil q-mt-sm">ஈற்றுச்சீர் (கடைசி சீர் மட்டும்)</div>
-                  <div class="tamil text-caption text-grey-7 q-mb-sm">நாள் · மலர் · காசு · பிறப்பு</div>
-                  <div v-if="!allFeetValid" class="text-caption text-negative tamil">சிவப்பு சீர்களை சரியான வகையில் மாற்றவும்.</div>
-                  <div v-else class="text-caption text-positive tamil">✓ எல்லா சீர்களும் சரியான வகை.</div>
-                </q-card-section>
-              </q-card>
-
-              <!-- Phase 3: bond errors -->
-              <q-card v-if="composePhase === 3" flat bordered>
-                <q-card-section class="q-pa-sm">
-                  <div class="sidebar-section-label tamil q-mb-xs">வெண்டளை விதி</div>
-                  <div class="tamil text-caption text-grey-7 q-mb-sm">மா-வகை → அடுத்தது நிரை · விளம்/காய்-வகை → அடுத்தது நேர்</div>
-                  <template v-if="linkageRuns.length">
-                    <div v-for="(run, ri) in linkageRuns" :key="'cr' + ri" class="q-mb-md">
-                      <div class="run-location tamil q-mb-xs">
-                        {{ runLocation(run) }}
-                        <span v-if="run.minChanges" class="min-changes-badge">{{ run.minChanges }} மாற்றம்</span>
-                      </div>
-                      <div v-if="run.solutions && run.solutions.length" class="text-caption text-grey-5 tamil q-mb-xs">
-                        பரிந்துரை{{ run.solutions.length > 1 ? 'கள்' : '' }}
-                      </div>
-                      <div v-for="(sol, si) in run.solutions" :key="'cs' + si"
-                        class="chain-row tamil"
-                        :class="activeChainKey === (ri + ':' + si) ? 'chain-row-active' : ''"
-                        @click="toggleChain(ri, si, sol)">
-                        <template v-for="(step, ki) in sol">
-                          <span :key="'f' + ki" :class="step.changed ? 'chain-cls' : 'chain-kept'">{{ step.foot }}</span>
-                          <span v-if="ki < sol.length - 1" :key="'a' + ki" class="chain-arrow">→</span>
-                        </template>
-                      </div>
-                    </div>
-                  </template>
-                  <div v-else class="text-caption text-positive tamil">✓ எல்லா தளைகளும் வெண்டளை.</div>
-                </q-card-section>
-              </q-card>
-
-            </div>
-          </div>
-        </div>
-
-        <!-- ── Fix mode: classes phase (no bonds, inline hints) ── -->
-        <div v-if="!composing">
+        <div>
           <!-- Status + action bar at top -->
           <div class="row items-center q-mb-md">
             <q-btn flat @click="step = 1" color="grey" icon="arrow_back" dense class="q-mr-sm" />
@@ -384,16 +259,6 @@
 }
 .foot-input:hover { border-bottom-color: #546e7a; background: #eeeeee; }
 
-/* ── Entry cards ── */
-.entry-card {
-  width: 160px;
-  transition: box-shadow 0.15s, border-color 0.15s;
-}
-.entry-card:hover {
-  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
-  border-color: #9e9e9e !important;
-}
-
 /* ── Verse block ── */
 .verse-block {
   background: #fafafa;
@@ -551,16 +416,6 @@
 .eol-arrow { font-size: 130%; }
 @media (max-width: 599px) { .eol-arrow { display: none; } }
 
-/* ── Sidebar ── */
-.sidebar-card { position: sticky; top: 8px; }
-.sidebar-section-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #757575;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 6px;
-}
 .run-location { font-size: 12px; color: #424242; }
 .run-foot-clickable { cursor: pointer; }
 .run-foot-clickable:hover { background: #fff8f8; }
@@ -610,26 +465,10 @@
 
 .chain-kept { font-size: 12px; color: #bdbdbd; font-style: italic; }
 
-/* ── Compose grid ── */
-.compose-grid { max-width: 600px; }
+/* ── Compose grid (step 1 blank boxes) ── */
 .compose-line { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
 .compose-cell { display: flex; flex-direction: column; align-items: center; flex: 1 1 80px; min-width: 0; }
 .compose-input { width: 100%; min-width: 72px; }
-.compose-foot-label { font-size: 11px; color: #757575; margin-top: 2px; min-height: 16px; }
-.compose-line-arrow { font-size: 120%; color: #bdbdbd; padding: 2px 0 2px 4px; }
-.compose-cross-bond { font-size: 11px; padding-left: 4px; }
-.compose-bond-con {
-  display: flex; flex-direction: row; align-items: center;
-  align-self: center; margin-bottom: 18px; padding: 0 2px;
-}
-.compose-bond-line { flex: 1; height: 2px; min-width: 6px; }
-.compose-bond-tick { font-size: 10px; padding: 0 1px; }
-.bond-ok .compose-bond-line  { background: #66bb6a; }
-.bond-ok .compose-bond-tick  { color: #66bb6a; }
-.bond-bad .compose-bond-line { background: #ef5350; }
-.bond-bad .compose-bond-tick { color: #ef5350; }
-.foot-ref-table { border-collapse: collapse; width: 100%; }
-.foot-ref-table tr td { padding: 2px 4px; }
 .min-changes-badge { font-size: 10px; background: #fff3e0; color: #e65100; border-radius: 3px; padding: 1px 5px; margin-left: 4px; vertical-align: middle; font-family: sans-serif; }
 .partial-notice { font-size: 11px; color: #7986cb; background: #e8eaf6; border-radius: 4px; padding: 3px 7px; }
 .chain-arrow  { font-size: 11px; color: #bdbdbd; padding: 0 1px; }
@@ -654,17 +493,35 @@ export default {
   mixins: [LinkMixin],
   async mounted () {
     if (this.$route.query.verse) {
-      this.entryMode = 'fix'
       this.text = this.$route.query.verse
       await this.parseVerse()
+    }
+  },
+  watch: {
+    composeType (val) {
+      this.editableWords = val === 'kuralpaa'
+        ? [['', '', '', ''], ['', '', '']]
+        : [['', '', '', ''], ['', '', '', ''], ['', '', '', ''], ['', '', '']]
+      this.parsedResult = null
+    },
+    inputMode (val) {
+      if (val === 'compose') {
+        this.editableWords = this.composeType === 'kuralpaa'
+          ? [['', '', '', ''], ['', '', '']]
+          : [['', '', '', ''], ['', '', '', ''], ['', '', '', ''], ['', '', '']]
+        this.parsedResult = null
+        this.text = ''
+      } else {
+        this.editableWords = []
+        this.parsedResult = null
+      }
     }
   },
   data () {
     return {
       step: 1,
-      entryMode: null,
-      composing: false,
-      composePhase: 1,
+      inputMode: 'fix',
+      composeType: 'venpaa',
       activeRunIndex: 0,
       text: '',
       editableWords: [],
@@ -817,18 +674,6 @@ export default {
     allBoxesFilled () {
       return this.editableWords.length > 0 &&
         this.editableWords.every(function (line) { return line.every(function (w) { return w && w.trim() }) })
-    },
-    footRefRows () {
-      return [
-        { name: 'தேமா', pattern: 'நேர்-நேர்' },
-        { name: 'புளிமா', pattern: 'நிரை-நேர்' },
-        { name: 'கூவிளம்', pattern: 'நேர்-நிரை' },
-        { name: 'கருவிளம்', pattern: 'நிரை-நிரை' },
-        { name: 'தேமாங்காய்', pattern: 'நேர்-நேர்-நேர்' },
-        { name: 'புளிமாங்காய்', pattern: 'நிரை-நேர்-நேர்' },
-        { name: 'கூவிளங்காய்', pattern: 'நேர்-நிரை-நேர்' },
-        { name: 'கருவிளங்காய்', pattern: 'நிரை-நிரை-நேர்' }
-      ]
     }
   },
   methods: {
@@ -899,7 +744,7 @@ export default {
     },
     footColClass (li, fi) {
       var key = li + '-' + fi
-      if (this.step === 3 || this.composing) {
+      if (this.step === 3) {
         if (this.chainHighlightPositions.indexOf(key) !== -1) return 'chain-sel'
         if (this.badChainPositions.has(key)) return 'chain-hi'
         return ''
@@ -910,7 +755,7 @@ export default {
     },
     footClassColClass (li, fi, foot) {
       var key = li + '-' + fi
-      if (this.step === 3 || this.composing) {
+      if (this.step === 3) {
         if (this.chainHighlightPositions.indexOf(key) !== -1) return 'chain-sel'
         if (this.badChainPositions.has(key)) return 'chain-hi'
         return 'class-ok'
@@ -1008,6 +853,10 @@ export default {
     ruleIcon (r) { return r === '1' ? 'check_circle' : r === 'info' ? 'info' : 'cancel' },
     ruleColor (r) { return r === '1' ? 'positive' : r === 'info' ? 'grey' : 'negative' },
     async goToStep2 () {
+      if (this.inputMode === 'compose') {
+        this.text = this.composedVerse
+        this.parsedResult = null
+      }
       if (!this.parsedResult) await this.parseVerse()
       if (this.step1Valid) {
         await this.fetchSuggestions()
@@ -1025,7 +874,7 @@ export default {
       this.showProgress = true
       const xml = await this.convertAsync(this.text)
       this.parsedResult = await this.getJson(xml)
-      if (this.parsedResult && this.parsedResult.verse && this.parsedResult.verse.MetricalLine) {
+      if (this.inputMode === 'fix' && this.parsedResult && this.parsedResult.verse && this.parsedResult.verse.MetricalLine) {
         this.editableWords = this.parsedResult.verse.MetricalLine.map(function (line) {
           return line.MetricalFoot.map(function (foot) {
             return foot.Metreme.map(function (m) { return m._ }).join('')
@@ -1053,33 +902,6 @@ export default {
       } catch (_) {}
       this.showProgress = false
     },
-    startCompose (type) {
-      this.text = ''
-      this.parsedResult = null
-      this.linkageRuns = []
-      this.activeChainKey = null
-      this.chainHighlightPositions = []
-      this.composing = true
-      this.composePhase = 1
-      this.editableWords = type === 'kuralpaa'
-        ? [['', '', '', ''], ['', '', '']]
-        : [['', '', '', ''], ['', '', '', ''], ['', '', '', ''], ['', '', '']]
-      this.step = 2
-    },
-    async checkClasses () {
-      this.showProgress = true
-      try {
-        var verse = this.composedVerse
-        var xml = await this.convertAsync(verse)
-        this.parsedResult = await this.getJson(xml)
-      } catch (_) {}
-      this.showProgress = false
-      if (this.allFeetValid) {
-        await this.checkBonds()
-      } else {
-        this.composePhase = 2
-      }
-    },
     async checkBondsForFix () {
       this.showProgress = true
       try {
@@ -1088,46 +910,6 @@ export default {
       this.showProgress = false
       this.step = 3
       this.$nextTick(() => { if (this.linkageRuns.length) this.selectRun(0) })
-    },
-    async checkBonds () {
-      this.showProgress = true
-      try {
-        await this.fetchSuggestions(this.composedVerse)
-      } catch (_) {}
-      this.showProgress = false
-      this.composePhase = 3
-    },
-    inlineBondOk (li, fi) {
-      if (!this.lines[li] || !this.lines[li].feet[fi]) return true
-      var lnk = this.lines[li].feet[fi].linkage
-      return !lnk || lnk.includes('வெண்டளை')
-    },
-    crossBondOk (li) {
-      if (!this.lines[li] || !this.lines[li].feet[0]) return true
-      var lnk = this.lines[li].feet[0].linkage
-      return !lnk || lnk.includes('வெண்டளை')
-    },
-    composeFootClass (li, fi) {
-      if (!this.lines[li] || !this.lines[li].feet[fi]) return ''
-      return this.getFootClass(li, fi, this.lines[li].feet[fi])
-    },
-    composeCellColor (li, fi) {
-      if (this.composePhase < 2) return 'grey-5'
-      var cls = this.composeFootClass(li, fi)
-      var word = this.wordAt(li, fi)
-      if (!word) return 'grey-4'
-      var isLastOfLast = li === this.editableWords.length - 1 && fi === this.editableWords[li].length - 1
-      var valid = isLastOfLast ? VALID_LAST_CLASSES.includes(cls) : VALID_BODY_FEET.includes(cls)
-      return valid ? 'positive' : 'negative'
-    },
-    composeCellBg (li, fi) {
-      if (this.composePhase < 2) return 'white'
-      var cls = this.composeFootClass(li, fi)
-      var word = this.wordAt(li, fi)
-      if (!word) return 'grey-1'
-      var isLastOfLast = li === this.editableWords.length - 1 && fi === this.editableWords[li].length - 1
-      var valid = isLastOfLast ? VALID_LAST_CLASSES.includes(cls) : VALID_BODY_FEET.includes(cls)
-      return valid ? 'green-1' : 'red-1'
     },
     async fetchSuggestions (verse) {
       try {
@@ -1159,9 +941,8 @@ export default {
     },
     restart () {
       this.step = 1
-      this.entryMode = null
-      this.composing = false
-      this.composePhase = 1
+      this.inputMode = 'fix'
+      this.composeType = 'venpaa'
       this.activeRunIndex = 0
       this.text = ''
       this.editableWords = []
