@@ -167,7 +167,6 @@ async function sendDone (send, result, totals, context = null) {
     thinking: totals.thoughtsTokenCount,
     cost: tokenCost(totals)
   }
-  await send({ type: 'tokens', ...tokens })
   console.log(`[generation] in:${tokens.input} out:${tokens.output} think:${tokens.thinking} → $${tokens.cost.toFixed(4)}`)
   return { ...result, tokens }
 }

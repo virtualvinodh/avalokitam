@@ -95,8 +95,8 @@ export default {
           dhis.showProgress = false
           // console.log(response.data)
           dhis.currentPage = 1
-          dhis.resultWords = response.data
-          // dhis.resultWords = JSON.parse(response.data)
+          const raw = response.data
+          dhis.resultWords = Array.isArray(raw) ? raw : JSON.parse(raw.replace(/^\uFEFF+/, ''))
         })
         .catch(function (error) {
           error = 'error'

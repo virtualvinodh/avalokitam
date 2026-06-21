@@ -60,7 +60,7 @@
               <div v-for="(word, fi) in lineWords" :key="'cw' + fi" class="compose-cell">
                 <q-input
                   :value="word"
-                  outlined dense class="tamil compose-input"
+                  class="tamil compose-input"
                   input-class="text-center"
                   :label="'சீர் ' + (fi + 1)"
                   @input="updateWord(li, fi, $event)"
@@ -241,6 +241,18 @@
             <q-btn flat @click="restart" color="grey" label="மீண்டும்" class="tamil q-mr-sm" />
             <q-btn @click="copyVerse" color="primary" icon="content_copy" label="நகலெடு" class="tamil" />
           </q-stepper-navigation>
+          <div class="row justify-center q-gutter-xs q-mt-sm items-center">
+            <q-btn dense flat icon="link" label="பகிர்" color="grey-7" class="tamil" size="sm" @click="shareLink(composedVerse)" />
+            <q-btn dense flat size="sm" @click="shareX(composedVerse)" title="X (Twitter)">
+              <img src="statics/twitter.svg" style="width:16px;height:16px;opacity:0.6" />
+            </q-btn>
+            <q-btn dense flat size="sm" @click="shareFacebook(composedVerse)" title="Facebook">
+              <img src="statics/facebook.svg" style="width:16px;height:16px;opacity:0.6" />
+            </q-btn>
+            <q-btn dense flat size="sm" @click="shareInstagram(composedVerse)" title="Instagram">
+              <img src="statics/instagram.svg" style="width:16px;height:16px;opacity:0.6" />
+            </q-btn>
+          </div>
         </div>
       </q-step>
 
@@ -477,6 +489,7 @@
 
 <script>
 import { LinkMixin } from '../mixin/LinkMixin'
+import { ShareMixin } from '../mixin/ShareMixin'
 var _ = require('underscore')
 
 const AI_BACKEND = 'http://localhost:3001'
@@ -490,11 +503,11 @@ function isValidBody (cls) {
 
 export default {
   name: 'VenpaaFixer',
-  mixins: [LinkMixin],
+  mixins: [LinkMixin, ShareMixin],
   async mounted () {
     if (this.$route.query.verse) {
       this.text = this.$route.query.verse
-      await this.parseVerse()
+      await this.goToStep2()
     }
   },
   watch: {

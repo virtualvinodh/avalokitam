@@ -70,26 +70,18 @@
         <q-checkbox v-model="aythamkuri" class="tamil col-lg-1" @input="demo" label="ஆய்தத்தை குறில் எழுத்தாக அலகிடுக"/>
         <q-checkbox v-model="extralong" class="tamil col-lg-1" @input="demo" label="உயிரளபெடையை நெடில் எழுத்தாக அலகிடுக"/>
     </q-expansion-item>
-<social-sharing :url="sharingURL"
-                      :title="sharingQuoteVVerse"
-                      :description="sharingQuoteVVerse"
-                      :quote="sharingQuoteVVerse"
-                      hashtags="tamil, poetry, prosody, avalokitam"
-                      class="q-mt-md"
-                      inline-template
-                      >
-  <div class="social">
-      <network network="facebook" class="q-ma-md cursor-pointer">
-        <img src="../statics/facebook.svg" width="20px">
-      </network>
-      <network network="whatsapp" class="q-ma-md cursor-pointer">
-        <img src="../statics/whatsapp.svg" width="20px">
-      </network>
-      <network network="twitter" class="q-ma-md cursor-pointer">
-        <img src="../statics/twitter.svg" width="20px">
-      </network>
-  </div>
-</social-sharing>
+<div class="row q-mt-md q-gutter-xs items-center" v-if="text">
+  <q-btn dense flat icon="link" label="பகிர்" color="grey-7" class="tamil" size="sm" @click="shareLink(text)" />
+  <q-btn dense flat size="sm" @click="shareX(text)" title="X (Twitter)">
+    <img src="statics/twitter.svg" style="width:16px;height:16px;opacity:0.6" />
+  </q-btn>
+  <q-btn dense flat size="sm" @click="shareFacebook(text)" title="Facebook">
+    <img src="statics/facebook.svg" style="width:16px;height:16px;opacity:0.6" />
+  </q-btn>
+  <q-btn dense flat size="sm" @click="shareInstagram(text)" title="Instagram">
+    <img src="statics/instagram.svg" style="width:16px;height:16px;opacity:0.6" />
+  </q-btn>
+</div>
   <div class="q-mt-md q-pa-md q-gutter-sm" v-if="hasProsodicErrors && !showYappuruppu">
     <q-banner inline-actions class="bg-grey-8 text-white tamil" dense rounded>
       <template v-slot:avatar>
@@ -229,19 +221,18 @@ import LineDisplay from '../components/LineDisplay'
 import OrnamentDisplay from '../components/OrnamentDisplay'
 import ScansionAll from '../components/ScansionAll'
 import RuleList from '../components/RuleList'
-import SocialSharing from 'vue-social-sharing'
 import { BitlyClient } from 'bitly'
 const bitly = new BitlyClient('', {})
 
 var _ = require('underscore')
 
 import { LinkMixin } from '../mixin/LinkMixin'
+import { ShareMixin } from '../mixin/ShareMixin'
 
 export default {
   name: 'PageIndex',
-  mixins: [LinkMixin],
+  mixins: [LinkMixin, ShareMixin],
   components: {
-    SocialSharing,
     ScansionDisplay,
     LetterDisplay,
     LinkageDisplay,
@@ -311,16 +302,6 @@ export default {
       } else {
         return this.lineCount.length + 2
       }
-    },
-    sharingURL: function () {
-      if (typeof this.text === 'string' && this.text !== '') {
-        return 'http://www.avalokitam.com/analyzer?text=' + this.text.replace(/\n/g, '%0D%0A').replace(/ /g, '%20')
-      } else {
-        return ''
-      }
-    },
-    sharingQuoteVVerse: function () {
-      return 'நான் இயற்றிய மரபுப்பாவை இங்கே பாருங்களேன்.'
     },
     nonSpecialEtukai: function () {
       // console.log(this.result['verse'])

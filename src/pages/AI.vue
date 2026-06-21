@@ -302,7 +302,7 @@
               <div class="tamil" style="white-space:pre-line; font-size:1.15em; line-height:1.9">{{ finalVerse }}</div>
               <template v-slot:action>
                 <q-btn flat dense icon="file_copy" label="நகலெடு" class="tamil" @click="copyVerse" />
-                <q-btn flat dense icon="find_in_page" label="ஆராய்க" class="tamil" @click="openInAnalyzer" />
+                <q-btn flat dense icon="build" label="சுயமாக திருத்துக" class="tamil" @click="openInFixer" />
                 <q-btn flat dense icon="refresh" label="மீண்டும்" class="tamil" @click="run" />
               </template>
             </q-banner>
@@ -523,6 +523,7 @@ export default {
               this.loadingExtra = false
             } else if (event.type === 'usage') {
               this.remaining = event.remaining
+              if (event.globalRemaining !== undefined) this.globalRemaining = event.globalRemaining
             } else if (event.type === 'error') {
               this.errorMsg = event.message
               this.loading = false
@@ -550,6 +551,9 @@ export default {
     },
     openInAnalyzer () {
       this.$router.push({ path: '/analyzer', query: { text: this.finalVerse } })
+    },
+    openInFixer () {
+      this.$router.push({ path: '/venpa-fixer', query: { verse: this.finalVerse } })
     }
   }
 }

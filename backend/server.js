@@ -129,6 +129,7 @@ app.post('/ai/stream', async (req, res) => {
   }
 
   const remaining = isDev ? 999 : FREE_LIMIT - (getCount(sessionId))
+  const globalRemaining = isDev ? 999 : Math.max(0, DAILY_GLOBAL_LIMIT - globalUsage.count)
 
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
@@ -142,8 +143,11 @@ app.post('/ai/stream', async (req, res) => {
 
   try {
     const result = await runLoop({ mode, topic, verse, verseType, lang, emit })
-    if (result?.tokens) recordTokens(result.tokens)
-    await emit({ type: 'usage', remaining })
+    if (result?.tokens) {
+      recordTokens(result.tokens)
+      await emit({ type: 'tokens', ...result.tokens })
+    }
+    await emit({ type: 'usage', remaining, globalRemaining })
   } catch (err) {
     await emit({ type: 'error', message: err.message })
   }
