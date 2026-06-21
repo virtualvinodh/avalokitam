@@ -356,9 +356,23 @@ function findMinChangeSolutions (prevAnchorName, candidates, rightAnchorName) {
     dfs(1, anc.footName, [{ li: anc.li, fi: anc.fi, foot: anc.footName, changed: false }], 0)
   }
 
+  // Rank equal-change solutions by ease of substitution (lower = easier to fix).
+  // Shorter feet have more available Tamil words: 2-syllable மா feet > 3-syllable விளம் feet > 4-syllable காய் feet.
+  const FOOT_TIER = {
+    'தேமா': 1, 'புளிமா': 1,
+    'கூவிளம்': 2, 'கருவிளம்': 2,
+    'தேமாங்காய்': 3, 'புளிமாங்காய்': 3, 'கூவிளங்காய்': 3, 'கருவிளங்காய்': 3
+  }
+  function scoreSolution (sol) {
+    return sol.filter(s => s.changed).reduce((sum, s) => sum + (FOOT_TIER[s.foot] || 4), 0)
+  }
+
+  const raw = globalMin === Infinity ? [] : (byCount[globalMin] || [])
+  raw.sort((a, b) => scoreSolution(a) - scoreSolution(b))
+
   return {
     minChanges: globalMin === Infinity ? 0 : globalMin,
-    solutions: globalMin === Infinity ? [] : (byCount[globalMin] || [])
+    solutions: raw
   }
 }
 

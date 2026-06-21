@@ -2,9 +2,36 @@
   <q-page class="q-pa-md">
     <q-stepper v-model="step" flat animated header-nav class="tamil">
 
-      <!-- ── Step 1: Input ──────────────────────────────────────────── -->
+      <!-- ── Step 1: Entry picker ─────────────────────────────────── -->
       <q-step :name="1" title="உள்ளிடு" icon="edit" :done="step > 1">
-        <div class="row justify-center">
+
+        <!-- ── 3-card picker ── -->
+        <div v-if="entryMode === null" class="row q-gutter-md justify-center q-mt-sm">
+          <q-card class="entry-card cursor-pointer" flat bordered @click="entryMode = 'fix'">
+            <q-card-section class="text-center">
+              <q-icon name="build" size="36px" color="grey-7" />
+              <div class="text-subtitle1 tamil q-mt-sm">வெண்பா திருத்து</div>
+              <div class="text-caption text-grey-6 tamil q-mt-xs">உள்ளிட்ட பாவின் தளையை சரிசெய்க</div>
+            </q-card-section>
+          </q-card>
+          <q-card class="entry-card cursor-pointer" flat bordered @click="startCompose('venpaa')">
+            <q-card-section class="text-center">
+              <q-icon name="create" size="36px" color="grey-7" />
+              <div class="text-subtitle1 tamil q-mt-sm">புதிய வெண்பா</div>
+              <div class="text-caption text-grey-6 tamil q-mt-xs">நான்கு அடிகளில் வெண்பா இயற்றுக</div>
+            </q-card-section>
+          </q-card>
+          <q-card class="entry-card cursor-pointer" flat bordered @click="startCompose('kuralpaa')">
+            <q-card-section class="text-center">
+              <q-icon name="short_text" size="36px" color="grey-7" />
+              <div class="text-subtitle1 tamil q-mt-sm">குறள் வெண்பா</div>
+              <div class="text-caption text-grey-6 tamil q-mt-xs">இரண்டு அடிகளில் குறள் இயற்றுக</div>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <!-- ── Fix mode: textarea ── -->
+        <div v-if="entryMode === 'fix'" class="row justify-center">
           <div class="col-12 col-md-6">
             <q-input
               v-model="text"
@@ -32,22 +59,16 @@
             </div>
           </div>
         </div>
-        <q-stepper-navigation>
+        <q-stepper-navigation v-if="entryMode === 'fix'">
+          <q-btn flat color="grey" icon="arrow_back" @click="entryMode = null" class="q-mr-sm" />
           <q-btn @click="goToStep2" color="primary" label="அடுத்து: திருத்து"
             :disable="!step1Valid" class="tamil" />
-          <q-btn flat @click="startCompose('venpaa')" color="grey-7" icon="create"
-            label="புதிய வெண்பா" class="tamil q-ml-sm" />
-          <q-btn flat @click="startCompose('kuralpaa')" color="grey-7" icon="create"
-            label="குறள் வெண்பா" class="tamil q-ml-sm" />
           <q-spinner-oval v-show="showProgress" color="grey-8" size="1.5em" class="q-ml-sm" />
         </q-stepper-navigation>
       </q-step>
 
-      <!-- ── Step 2: Fix / Compose ─────────────────────────────────── -->
-      <q-step :name="2" title="திருத்து" icon="build" :done="step > 2">
-        <p class="text-body2 tamil text-grey-8 q-mb-md">
-          {{ composing ? 'ஒவ்வொரு கட்டத்திலும் ஒரு சீர் எழுதுங்கள்.' : 'சீரை மாற்றி வாய்ப்பாட்டையும் தளையையும் சரிசெய்யுங்கள்.' }}
-        </p>
+      <!-- ── Step 2: வாய்ப்பாடு / Compose ──────────────────────────── -->
+      <q-step :name="2" title="வாய்ப்பாடு" icon="spellcheck" :done="step > 2">
 
         <!-- ── Compose phased layout ── -->
         <div v-if="composing">
@@ -116,7 +137,7 @@
                   class="tamil" @click="checkBonds" />
                 <q-btn v-if="composePhase === 3" unelevated color="positive"
                   label="முடிவு" :disable="!allValid"
-                  class="tamil" @click="step = 3" />
+                  class="tamil" @click="step = 4" />
                 <q-spinner-oval v-show="showProgress" color="grey-8" size="1.5em" />
               </div>
             </div>
@@ -184,147 +205,139 @@
           </div>
         </div>
 
-        <div v-if="!composing" class="row q-col-gutter-md">
-
-          <!-- ── Left: verse blocks ── -->
-          <div class="col-12" :class="lines.length ? 'col-md-7' : ''">
-            <div v-for="(line, li) in lines" :key="'l' + li" class="q-mb-sm">
-
-              <!-- Cross-line bond -->
-              <div v-if="li > 0 && line.feet[0] && line.feet[0].linkage" class="q-mb-xs q-ml-xs">
-                <span class="tamil cross-bond-text"
-                  :class="line.feet[0].linkage.includes('வெண்டளை') ? 'text-blue-grey-6' : 'text-red-8 redunderline'">
-                  ⤒ {{ line.feet[0].linkage }} ↦
-                </span>
-              </div>
-
-              <div class="verse-block">
-                <!-- TOP: word inputs + syllables -->
-                <div class="vb-top">
-                  <div v-for="(foot, fi) in line.feet" :key="'ft' + fi" class="foot-col"
-                    :class="footColClass(li, fi)">
-                    <q-input
-                      :value="wordAt(li, fi)"
-                      dense borderless class="tamil foot-input" input-class="text-center"
-                      @input="updateWord(li, fi, $event)"
-                    />
+        <!-- ── Fix mode: classes phase (no bonds, inline hints) ── -->
+        <div v-if="!composing">
+          <!-- Status + action bar at top -->
+          <div class="row items-center q-mb-md">
+            <q-btn flat @click="step = 1" color="grey" icon="arrow_back" dense class="q-mr-sm" />
+            <span v-if="lines.length && classErrors.length === 0" class="text-caption text-positive tamil col">✓ எல்லா சீர்களும் சரியான வகை.</span>
+            <span v-else-if="classErrors.length" class="text-caption text-grey-7 tamil col">{{ classErrors.length }} பிழை{{ classErrors.length > 1 ? 'கள்' : '' }} — சீர்களை திருத்துக</span>
+            <q-btn @click="checkBondsForFix" color="primary" label="தளை சரிபார்க்க →" :disable="!allFeetValid" size="sm" class="tamil" />
+            <q-spinner-oval v-show="showProgress" color="grey-8" size="1.5em" class="q-ml-sm" />
+          </div>
+          <div v-for="(line, li) in lines" :key="'l' + li" class="q-mb-sm">
+            <div class="verse-block">
+              <div class="vb-row vb-row-classes">
+                <template v-for="(foot, fi) in line.feet">
+                  <div :key="'fu' + fi" class="foot-unit" :class="[footColClass(li, fi), classErrBoundClass(li, fi)]">
+                    <q-input :value="wordAt(li, fi)" dense borderless class="tamil foot-input" input-class="text-center" @input="updateWord(li, fi, $event)" />
                     <div class="metremes-line">
                       <span v-for="(m, mi) in foot.metremes" :key="mi" class="metreme-item">
-                        <span class="syl-sym">{{ m[1] === 'நேர்' ? '⏑' : '―' }}</span><span :class="metremeTypeStyle(m[1])" class="tamil">{{ m[0] }}</span>
+                        <span :class="metremeTypeStyle(m[1])" class="tamil">{{ m[0] }}</span>
                       </span>
                     </div>
-                  </div>
-                </div>
-
-                <!-- SEPARATOR -->
-                <div class="layer-sep"></div>
-
-                <!-- BOTTOM: foot classes + bond connectors -->
-                <div class="vb-bottom">
-                  <template v-for="(foot, fi) in line.feet">
-                    <div v-if="fi > 0" :key="'bn' + fi" class="bond-con"
-                      :class="foot.linkage && foot.linkage.includes('வெண்டளை') ? 'bond-ok' : 'bond-bad'">
-                      <div class="bond-line"></div>
-                      <span class="tamil bond-label">{{ foot.linkage ? shortLinkType(foot.linkage) : '?' }}</span>
-                      <div class="bond-line"></div>
-                    </div>
-                    <div :key="'fc' + fi" class="foot-class-col"
-                      :class="footClassColClass(li, fi, foot)">
-                      <span class="tamil" :class="feetTypeStyle(getFootClass(li, fi, foot))">
+                    <div class="foot-unit-sep"></div>
+                    <div class="foot-class-col" :class="footClassColClass(li, fi, foot)">
+                      <span class="tamil" :class="isFootClassValid(li, fi, foot) ? feetTypeStyle(getFootClass(li, fi, foot)) : 'text-red-9'">
                         <b>{{ getFootClass(li, fi, foot) }}</b>
                       </span>
                     </div>
+                    <div v-if="!isFootClassValid(li, fi, foot)" class="foot-hint tamil">
+                      {{ li === lines.length - 1 && fi === line.feet.length - 1 ? 'நாள்/மலர்/காசு/பிறப்பு' : 'மா அல்லது காய்' }}
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+            <div v-if="li < lines.length - 1" class="q-mt-xs q-ml-xs tamil text-grey-5 eol-arrow">⤓</div>
+          </div>
+        </div>
+      </q-step>
+
+      <!-- ── Step 3: தளை ───────────────────────────────────────────── -->
+      <q-step :name="3" title="தளை" icon="link" :done="step > 3">
+
+        <!-- Minimal header -->
+        <div class="row items-center q-mb-sm">
+          <span v-if="linkageRuns.length" class="text-caption text-grey-7 tamil col">
+            {{ linkageRuns.length }} தளைப் பிழை{{ linkageRuns.length > 1 ? 'கள்' : '' }} — சீர்களை தொட்டு திருத்துக
+          </span>
+          <span v-else class="text-caption text-positive tamil col">✓ எல்லா தளைகளும் வெண்டளை.</span>
+          <q-spinner-oval v-show="showProgress" color="grey-8" size="1.5em" />
+        </div>
+
+        <!-- Verse grid with inline suggestions -->
+        <div v-for="(line, li) in lines" :key="'bl' + li" class="q-mb-xs">
+          <div v-if="li > 0 && line.feet[0] && line.feet[0].linkage" class="cross-bond-row q-mb-xs">
+            <span class="tamil cross-bond-text"
+              :class="line.feet[0].linkage.includes('வெண்டளை') ? 'text-blue-grey-6' : 'text-red-8 redunderline'">
+              {{ shortLinkType(line.feet[0].linkage) }}
+            </span>
+          </div>
+          <div class="verse-block">
+            <div class="vb-pairs">
+              <template v-for="(pair, pi) in linePairs(li)">
+                <div :key="'pr' + pi" class="vb-pair">
+                  <template v-for="item in pair.items">
+                    <div v-if="item.type === 'bond'" :key="'pb' + item.fi" class="bond-con"
+                      :class="[line.feet[item.fi].linkage && line.feet[item.fi].linkage.includes('வெண்டளை') ? 'bond-ok' : 'bond-bad', runBondBoundClass(li, item.fi)]">
+                      <div class="bond-line"></div>
+                      <span class="tamil bond-label">{{ line.feet[item.fi].linkage ? shortLinkType(line.feet[item.fi].linkage) : '?' }}</span>
+                      <div class="bond-line"></div>
+                    </div>
+                    <div v-else :key="'pf' + item.fi" class="foot-unit" :class="[footColClass(li, item.fi), runBoundClass(li, item.fi), isInAnyRun(li, item.fi) ? 'run-foot-clickable' : '']"
+                      @click="selectRunByFoot(li, item.fi)">
+                      <q-input :value="wordAt(li, item.fi)" dense borderless class="tamil foot-input" input-class="text-center" @input="updateWord(li, item.fi, $event)" />
+                      <div class="metremes-line">
+                        <span v-for="(m, mi) in line.feet[item.fi].metremes" :key="mi" class="metreme-item">
+                          <span :class="metremeTypeStyle(m[1])" class="tamil">{{ m[0] }}</span>
+                        </span>
+                      </div>
+                      <div class="foot-unit-sep"></div>
+                      <div class="foot-class-col" :class="footClassColClass(li, item.fi, line.feet[item.fi])">
+                        <span class="tamil" :class="isFootClassValid(li, item.fi, line.feet[item.fi]) ? feetTypeStyle(getFootClass(li, item.fi, line.feet[item.fi])) : 'text-red-9'">
+                          <b>{{ getFootClass(li, item.fi, line.feet[item.fi]) }}</b>
+                        </span>
+                      </div>
+                      <div v-if="unselectedRunEndAt(li, item.fi) >= 0" class="run-tap-indicator">▼ பரிந்துரை</div>
+                    </div>
                   </template>
                 </div>
-              </div>
-
-              <div v-if="li < lines.length - 1" class="q-mt-xs q-ml-xs tamil text-grey-5 eol-arrow">⤓</div>
+                <!-- cross-pair bond -->
+                <div v-if="pair.crossBondFi !== null" :key="'cpb' + pi" class="bond-con cross-pair-bond"
+                  :class="[line.feet[pair.crossBondFi].linkage && line.feet[pair.crossBondFi].linkage.includes('வெண்டளை') ? 'bond-ok' : 'bond-bad', runBondBoundClass(li, pair.crossBondFi)]">
+                  <div class="bond-line"></div>
+                  <span class="tamil bond-label">{{ line.feet[pair.crossBondFi].linkage ? shortLinkType(line.feet[pair.crossBondFi].linkage) : '?' }}</span>
+                  <div class="bond-line"></div>
+                </div>
+              </template>
             </div>
           </div>
 
-          <!-- ── Right: phased sidebar ── -->
-          <div v-if="lines.length" class="col-12 col-md-5">
-            <q-card flat bordered class="sidebar-card">
-              <q-card-section class="q-pa-sm">
-
-                <!-- Phase indicator -->
-                <div class="row items-center q-gutter-xs q-mb-sm">
-                  <q-chip dense :color="fixPhase === 'classes' ? 'blue-8' : 'grey-6'" text-color="white" size="sm" class="tamil">1. சீர் வகை</q-chip>
-                  <q-icon name="chevron_right" color="grey-5" />
-                  <q-chip dense :color="fixPhase === 'bonds' ? 'orange-8' : 'grey-4'" text-color="white" size="sm" class="tamil">2. தளை</q-chip>
-                  <q-space />
-                  <q-btn v-if="activeChainKey" flat dense round icon="close" size="sm" color="grey" @click="clearChain" />
-                </div>
-
-                <!-- Phase 1: foot class errors -->
-                <template v-if="fixPhase === 'classes'">
-                  <div v-if="classErrors.length">
-                    <div class="sidebar-section-label tamil">வாய்ப்பாடு பிழைகள்</div>
-                    <div v-for="(err, ei) in classErrors" :key="'ce' + ei" class="q-mb-sm q-pl-sm">
-                      <div class="run-location tamil q-mb-xs">
-                        அடி {{ err.li + 1 }}, சீர் {{ err.fi + 1 }}: <span :class="feetTypeStyle(err.cls)">{{ err.cls }}</span>
-                      </div>
-                      <div class="text-caption text-grey-7 tamil">
-                        {{ err.isLastOfLast ? 'நாள் · மலர் · காசு · பிறப்பு' : 'ஈரசைச்சீர் அல்லது காய்ச்சீர்' }}
-                      </div>
-                    </div>
-                  </div>
-                  <div v-else class="text-caption text-positive tamil q-mb-sm">✓ எல்லா சீர்களும் சரியான வகை.</div>
-                  <q-btn unelevated color="blue-8" label="தளை சரிபார்க்க →"
-                    :disable="!allFeetValid" size="sm"
-                    class="tamil full-width q-mt-sm" @click="checkBondsForFix" />
+          <!-- Inline suggestions: shown below the line where the active run starts -->
+          <div v-if="isActiveRunLine(li) && linkageRuns[activeRunIndex]" class="inline-suggestions tamil">
+            <div v-if="linkageRuns[activeRunIndex].isPartial" class="partial-notice q-mb-xs">
+              {{ linkageRuns[activeRunIndex].totalLength }} சீர்களில் பிழை — முதல் 2 சீரை திருத்தி மீண்டும் சரிபார்க்கவும்
+            </div>
+            <div v-if="!linkageRuns[activeRunIndex].solutions || linkageRuns[activeRunIndex].solutions.length === 0"
+              class="text-caption text-grey-6">
+              பரிந்துரை இல்லை — பக்கத்து சீர்களை மாற்றிப் பாருங்கள்
+            </div>
+            <template v-else>
+              <div class="text-caption text-grey-5 q-mb-xs">பரிந்துரை{{ linkageRuns[activeRunIndex].solutions.length > 1 ? 'கள்' : '' }}</div>
+              <div v-for="(sol, si) in linkageRuns[activeRunIndex].solutions" :key="'s' + si"
+                class="chain-row"
+                :class="activeChainKey === (activeRunIndex + ':' + si) ? 'chain-row-active' : ''"
+                @click="toggleChain(activeRunIndex, si, sol)">
+                <template v-for="(stp, ki) in sol">
+                  <span :key="'f' + ki" :class="stp.changed ? 'chain-cls' : 'chain-kept'">{{ stp.foot }}</span>
+                  <span v-if="ki < sol.length - 1" :key="'a' + ki" class="chain-arrow">→</span>
                 </template>
-
-                <!-- Phase 2: bond errors -->
-                <template v-if="fixPhase === 'bonds'">
-                  <div v-if="linkageRuns.length">
-                    <div class="sidebar-section-label tamil q-mb-xs">தளை பிழைகள்</div>
-                    <div v-for="(run, ri) in linkageRuns" :key="'run' + ri" class="q-mb-md">
-                      <div class="run-location tamil q-mb-xs">
-                        {{ runLocation(run) }}
-                        <span v-if="run.minChanges" class="min-changes-badge">{{ run.minChanges }} மாற்றம்</span>
-                      </div>
-                      <div v-if="run.isPartial" class="partial-notice tamil q-mb-xs">
-                        {{ run.totalLength }} சீர் தொடர் — முதல் 2 சீர் சரிசெய்து மீண்டும் சரிபார்க்கவும்
-                      </div>
-                      <div v-if="!run.solutions || run.solutions.length === 0" class="text-caption text-grey-6 tamil q-pl-sm">
-                        சீர்த்தொடர் இல்லை — சுற்றியுள்ள சீர்களை மாற்றவும்
-                      </div>
-                      <div v-if="run.solutions && run.solutions.length" class="text-caption text-grey-5 tamil q-mb-xs">
-                        பரிந்துரை{{ run.solutions.length > 1 ? 'கள்' : '' }}
-                      </div>
-                      <div v-for="(sol, si) in run.solutions" :key="'s' + si"
-                        class="chain-row tamil"
-                        :class="activeChainKey === (ri + ':' + si) ? 'chain-row-active' : ''"
-                        @click="toggleChain(ri, si, sol)">
-                        <template v-for="(step, ki) in sol">
-                          <span :key="'f' + ki" :class="step.changed ? 'chain-cls' : 'chain-kept'">{{ step.foot }}</span>
-                          <span v-if="ki < sol.length - 1" :key="'a' + ki" class="chain-arrow">→</span>
-                        </template>
-                      </div>
-                    </div>
-                  </div>
-                  <div v-else class="text-caption text-positive tamil q-mb-sm">✓ எல்லா தளைகளும் வெண்டளை.</div>
-                  <q-btn flat dense color="grey" icon="arrow_back" size="sm"
-                    class="tamil q-mt-xs" label="சீர் வகை" @click="fixPhase = 'classes'" />
-                </template>
-
-              </q-card-section>
-            </q-card>
+              </div>
+            </template>
           </div>
 
+          <div v-if="li < lines.length - 1" class="q-mt-xs q-ml-xs tamil text-grey-5 eol-arrow">⤓</div>
         </div>
 
         <q-stepper-navigation class="q-mt-md">
-          <q-btn flat @click="step = 1" color="grey" label="முந்தைய" class="tamil q-mr-sm" />
-          <q-btn @click="step = 3" color="primary" label="முடிவு"
-            :disable="!allValid" class="tamil" />
-          <q-spinner-oval v-show="showProgress" color="grey-8" size="1.5em" class="q-ml-sm" />
+          <q-btn flat @click="step = 2" color="grey" label="முந்தைய" class="tamil q-mr-sm" />
+          <q-btn @click="step = 4" color="primary" label="முடிவு" :disable="!allValid" class="tamil" />
         </q-stepper-navigation>
       </q-step>
 
-      <!-- ── Step 3: Done ───────────────────────────────────────────── -->
-      <q-step :name="3" title="முடிவு" icon="celebration">
+      <!-- ── Step 4: Done ───────────────────────────────────────────── -->
+      <q-step :name="4" title="முடிவு" icon="celebration">
         <div class="text-center q-pa-md">
           <q-icon name="celebration" color="positive" size="56px" />
           <div class="text-h6 tamil q-mt-sm text-positive">வெண்பா நிறைவுற்றது!</div>
@@ -355,7 +368,25 @@
 </template>
 
 <style scoped>
-.foot-input { min-width: 70px; }
+.foot-input {
+  min-width: 70px;
+  border-bottom: 1.5px solid #90a4ae;
+  border-radius: 3px 3px 0 0;
+  background: #f5f5f5;
+  transition: border-color 0.15s, background 0.15s;
+  margin-bottom: 6px;
+}
+.foot-input:hover { border-bottom-color: #546e7a; background: #eeeeee; }
+
+/* ── Entry cards ── */
+.entry-card {
+  width: 160px;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.entry-card:hover {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+  border-color: #9e9e9e !important;
+}
 
 /* ── Verse block ── */
 .verse-block {
@@ -365,20 +396,70 @@
   padding: 8px 12px;
   overflow-x: auto;
 }
-.vb-top {
+.vb-row {
   display: flex;
   flex-direction: row;
-  align-items: flex-end;
-  gap: 8px;
+  align-items: stretch;
   flex-wrap: nowrap;
+  overflow-x: auto;
 }
-.foot-col {
+
+/* Bonds phase: pair-based layout */
+.vb-pairs { display: flex; flex-direction: row; align-items: stretch; flex-wrap: nowrap; overflow-x: auto; }
+.vb-pair  { display: flex; flex-direction: row; align-items: stretch; flex-shrink: 0; }
+
+/* Mobile: bonds → 2 per row */
+@media (max-width: 599px) {
+  /* bonds phase: linear vertical chain */
+  .vb-pairs { flex-direction: column; align-items: stretch; overflow-x: hidden; gap: 0; }
+  .vb-pair  { flex-direction: column; width: 100%; }
+  .vb-pair .foot-unit { width: 100%; min-width: 0; }
+  /* bond connector: centered label with arrow characters */
+  .vb-pair .bond-con,
+  .cross-pair-bond {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 0; width: 100%;
+    padding: 1px 0;
+  }
+  .vb-pair .bond-line,
+  .cross-pair-bond .bond-line { display: none !important; }
+  .bond-label::before { content: '↑'; display: block; text-align: center; font-size: 9px; line-height: 1.4; }
+  .bond-label::after  { content: '↓'; display: block; text-align: center; font-size: 9px; line-height: 1.4; }
+  .cross-pair-bond { margin-left: 0; }
+}
+
+/* Classes phase mobile: stack feet vertically, each foot as a column */
+@media (max-width: 599px) {
+  .vb-row-classes { flex-direction: column; overflow-x: hidden; gap: 6px; }
+  .vb-row-classes .foot-unit {
+    flex-direction: column; align-items: center;
+    width: 100%; min-width: 0; padding: 6px 8px;
+    border: 1px solid #e0e0e0; border-radius: 6px;
+  }
+  .vb-row-classes .foot-input     { width: 100%; }
+  .vb-row-classes .metremes-line  { justify-content: center; margin-top: 2px; }
+  .vb-row-classes .foot-unit-sep  { display: none; }
+  .vb-row-classes .foot-class-col { width: auto; margin-top: 2px; text-align: center; }
+  .vb-row-classes .foot-hint      { margin-top: 2px; font-size: 10px; text-align: center; }
+}
+.foot-unit {
   min-width: 72px;
   text-align: center;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   border-radius: 4px;
   padding: 2px 3px;
   transition: background 0.15s;
+}
+.foot-unit-sep {
+  width: 100%;
+  height: 1px;
+  background: #e0e0e0;
+  margin: 4px 0;
 }
 .metremes-line {
   display: flex;
@@ -386,33 +467,18 @@
   justify-content: center;
   gap: 5px;
   flex-wrap: wrap;
+  flex: 1;
 }
 .metreme-item {
   display: inline-flex;
   align-items: baseline;
   gap: 1px;
 }
-.syl-sym { font-size: 105%; color: #bdbdbd; }
-
-.layer-sep {
-  height: 1px;
-  background: #bdbdbd;
-  margin: 8px -12px;
-}
-
-.vb-bottom {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  flex-wrap: nowrap;
-  padding-top: 6px;
-}
 .foot-class-col {
-  min-width: 72px;
+  width: 100%;
   text-align: center;
-  flex-shrink: 0;
-  padding: 4px 6px;
-  border-radius: 6px;
+  padding: 2px 4px;
+  border-radius: 4px;
   transition: background 0.15s;
 }
 .bond-con {
@@ -424,22 +490,60 @@
   padding: 0 2px;
 }
 .bond-line { flex: 1; height: 1px; min-width: 6px; }
-.bond-ok .bond-line { background: #90a4ae; }
-.bond-bad .bond-line { background: #ef9a9a; }
+.bond-ok .bond-line      { background: #90a4ae; }
+.bond-bad .bond-line     { background: #ef9a9a; }
+.bond-neutral .bond-line { background: #e0e0e0; }
 .bond-label { font-size: 10px; white-space: nowrap; padding: 0 2px; }
-.bond-ok .bond-label  { color: #546e7a; }
-.bond-bad .bond-label { color: #c62828; text-decoration: underline wavy #c62828; }
+.bond-ok .bond-label      { color: #546e7a; }
+.bond-bad .bond-label     { color: #c62828; text-decoration: underline wavy #c62828; }
+.bond-neutral .bond-label { color: #bdbdbd; }
 
 /* Foot state colours */
-.class-ok     { background: transparent; }
-.class-bad    { background: #fff3f3; }
+.class-ok       { background: transparent; }
+.class-bad      { background: #fff3f3; }
+.col-class-bad  { background: #ffebee; border-radius: 4px; }
+.foot-hint      { font-size: 9px; color: #c62828; text-align: center; margin-top: 3px; line-height: 1.2; }
+
+/* run bounding rectangle */
+.run-bound-single { border: 2px solid #e53935; border-radius: 5px; }
+.run-bound-start  { border-top: 2px solid #e53935; border-bottom: 2px solid #e53935; border-left: 2px solid #e53935; border-radius: 5px 0 0 5px; }
+.run-bound-mid    { border-top: 2px solid #e53935; border-bottom: 2px solid #e53935; }
+.run-bound-end    { border-top: 2px solid #e53935; border-bottom: 2px solid #e53935; border-right: 2px solid #e53935; border-radius: 0 5px 5px 0; }
+.run-bound-bond   { border-top: 2px solid #e53935; border-bottom: 2px solid #e53935; }
+.run-bound-dim-single { border: 1.5px solid #ef9a9a; border-radius: 5px; }
+.run-bound-dim-start  { border-top: 1.5px solid #ef9a9a; border-bottom: 1.5px solid #ef9a9a; border-left: 1.5px solid #ef9a9a; border-radius: 5px 0 0 5px; }
+.run-bound-dim-mid    { border-top: 1.5px solid #ef9a9a; border-bottom: 1.5px solid #ef9a9a; }
+.run-bound-dim-end    { border-top: 1.5px solid #ef9a9a; border-bottom: 1.5px solid #ef9a9a; border-right: 1.5px solid #ef9a9a; border-radius: 0 5px 5px 0; }
+.run-bound-dim-bond   { border-top: 1.5px solid #ef9a9a; border-bottom: 1.5px solid #ef9a9a; }
+
+/* Mobile vertical chain: rotate border logic — top/bottom become start/end, left/right become the sides */
+@media (max-width: 599px) {
+  .run-bound-start      { border: 0; border-top: 2px solid #e53935; border-left: 2px solid #e53935; border-right: 2px solid #e53935; border-radius: 5px 5px 0 0; }
+  .run-bound-mid        { border: 0; border-left: 2px solid #e53935; border-right: 2px solid #e53935; border-radius: 0; }
+  .run-bound-end        { border: 0; border-bottom: 2px solid #e53935; border-left: 2px solid #e53935; border-right: 2px solid #e53935; border-radius: 0 0 5px 5px; }
+  .run-bound-bond       { border: 0; border-left: 2px solid #e53935; border-right: 2px solid #e53935; border-radius: 0; }
+  .run-bound-dim-start  { border: 0; border-top: 1.5px solid #ef9a9a; border-left: 1.5px solid #ef9a9a; border-right: 1.5px solid #ef9a9a; border-radius: 5px 5px 0 0; }
+  .run-bound-dim-mid    { border: 0; border-left: 1.5px solid #ef9a9a; border-right: 1.5px solid #ef9a9a; border-radius: 0; }
+  .run-bound-dim-end    { border: 0; border-bottom: 1.5px solid #ef9a9a; border-left: 1.5px solid #ef9a9a; border-right: 1.5px solid #ef9a9a; border-radius: 0 0 5px 5px; }
+  .run-bound-dim-bond   { border: 0; border-left: 1.5px solid #ef9a9a; border-right: 1.5px solid #ef9a9a; border-radius: 0; }
+}
 .chain-hi     { background: #fff8e1; }
-.chain-sel    { outline: 2px solid #26c6da; outline-offset: -2px; background: #e0f7fa !important; }
+.chain-sel    { background: #ffebee !important; }
 
 /* Cross-line / eol */
+.cross-bond-row { }
 .cross-bond-text { font-size: 11px; }
+.cross-bond-text::before { content: '⤒ '; }
+.cross-bond-text::after  { content: ' ↦'; }
+@media (max-width: 599px) {
+  .cross-bond-row { display: flex; flex-direction: column; align-items: center; }
+  .cross-bond-text { display: flex; flex-direction: column; align-items: center; }
+  .cross-bond-text::before { content: '↑'; font-size: 9px; line-height: 1.4; }
+  .cross-bond-text::after  { content: '↓'; font-size: 9px; line-height: 1.4; }
+}
 .redunderline { text-decoration: underline wavy red; }
 .eol-arrow { font-size: 130%; }
+@media (max-width: 599px) { .eol-arrow { display: none; } }
 
 /* ── Sidebar ── */
 .sidebar-card { position: sticky; top: 8px; }
@@ -452,6 +556,34 @@
   margin-bottom: 6px;
 }
 .run-location { font-size: 12px; color: #424242; }
+.run-foot-clickable { cursor: pointer; }
+.run-foot-clickable:hover { background: #fff8f8; }
+.run-tap-indicator {
+  font-size: 9px; color: #e53935; text-align: center;
+  margin-top: 2px; letter-spacing: 0.3px; user-select: none;
+}
+.inline-suggestions {
+  border: 1px solid #e0e0e0;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  padding: 6px 10px 8px;
+  background: #fafafa;
+}
+.run-list { border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; }
+.run-list-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; cursor: pointer; font-size: 12px;
+  border-bottom: 1px solid #f0f0f0; transition: background 0.12s;
+}
+.run-list-item:last-child { border-bottom: none; }
+.run-list-item:hover { background: #f5f5f5; }
+.run-list-active { background: #e3f2fd !important; font-weight: 600; }
+.run-list-num {
+  min-width: 18px; height: 18px; border-radius: 50%;
+  background: #90a4ae; color: #fff; font-size: 10px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.run-list-active .run-list-num { background: #1976d2; }
 
 .chain-row {
   display: flex;
@@ -514,17 +646,27 @@ function isValidBody (cls) {
 export default {
   name: 'VenpaaFixer',
   mixins: [LinkMixin],
+  async mounted () {
+    if (this.$route.query.verse) {
+      this.entryMode = 'fix'
+      this.text = this.$route.query.verse
+      await this.parseVerse()
+    }
+  },
   data () {
     return {
       step: 1,
+      entryMode: null,
       composing: false,
       composePhase: 1,
-      fixPhase: 'classes',
+      activeRunIndex: 0,
       text: '',
       editableWords: [],
       linkageRuns: [],
       activeChainKey: null,
       chainHighlightPositions: [],
+      activeSolBounds: {},
+      activeClassErrIdx: -1,
       parsedResult: null,
       showProgress: false,
       processText: _.debounce(this.parseVerse, 400),
@@ -647,6 +789,22 @@ export default {
     totalErrors () {
       return this.linkageRuns.length + this.classErrors.length
     },
+    allRunBoundsMap () {
+      var map = {}
+      this.linkageRuns.forEach(function (run, ri) {
+        var pts = run.leftAnchor ? [run.leftAnchor].concat(run.positions) : run.positions.slice()
+        var lineBounds = {}
+        pts.forEach(function (p) {
+          if (!lineBounds[p.li]) lineBounds[p.li] = { min: p.fi, max: p.fi }
+          else { lineBounds[p.li].min = Math.min(lineBounds[p.li].min, p.fi); lineBounds[p.li].max = Math.max(lineBounds[p.li].max, p.fi) }
+        })
+        Object.keys(lineBounds).forEach(function (li) {
+          var b = lineBounds[li]
+          map[li + '|' + ri] = b
+        })
+      })
+      return map
+    },
     allBoxesFilled () {
       return this.editableWords.length > 0 &&
         this.editableWords.every(function (line) { return line.every(function (w) { return w && w.trim() }) })
@@ -669,7 +827,7 @@ export default {
       return (this.editableWords[li] && this.editableWords[li][fi]) || ''
     },
     updateWord (li, fi, value) {
-      this.$set(this.editableWords[li], fi, value)
+      this.$set(this.editableWords[li], fi, value.replace(/ /g, ''))
       this.reparseDebounced()
     },
     getFootClass (li, fi, foot) {
@@ -681,17 +839,74 @@ export default {
       var isLastOfLast = li === this.lines.length - 1 && fi === this.lines[li].feet.length - 1
       return isLastOfLast ? VALID_LAST_CLASSES.includes(cls) : isValidBody(cls)
     },
+    classErrBoundClass (li, fi) {
+      var err = this.classErrors[this.activeClassErrIdx]
+      if (!err || err.li !== li || err.fi !== fi) return ''
+      return 'run-bound-single'
+    },
+    linePairs (li) {
+      var line = this.lines[li]
+      if (!line) return []
+      var feet = line.feet
+      var pairs = []
+      for (var i = 0; i < feet.length; i += 2) {
+        var items = [{ type: 'foot', fi: i }]
+        if (i + 1 < feet.length) {
+          items.push({ type: 'bond', fi: i + 1 })
+          items.push({ type: 'foot', fi: i + 1 })
+        }
+        var crossFi = i + 2
+        pairs.push({ items: items, crossBondFi: crossFi < feet.length ? crossFi : null })
+      }
+      return pairs
+    },
+    runBoundClass (li, fi) {
+      var b = this.activeSolBounds[li]
+      if (b && fi >= b.min && fi <= b.max) {
+        if (b.min === b.max) return 'run-bound-single'
+        if (fi === b.min) return 'run-bound-start'
+        if (fi === b.max) return 'run-bound-end'
+        return 'run-bound-mid'
+      }
+      for (var ri = 0; ri < this.linkageRuns.length; ri++) {
+        var db = this.allRunBoundsMap[li + '|' + ri]
+        if (db && fi >= db.min && fi <= db.max) {
+          if (db.min === db.max) return 'run-bound-dim-single'
+          if (fi === db.min) return 'run-bound-dim-start'
+          if (fi === db.max) return 'run-bound-dim-end'
+          return 'run-bound-dim-mid'
+        }
+      }
+      return ''
+    },
+    runBondBoundClass (li, fi) {
+      var b = this.activeSolBounds[li]
+      if (b && fi - 1 >= b.min && fi <= b.max) return 'run-bound-bond'
+      for (var ri = 0; ri < this.linkageRuns.length; ri++) {
+        var db = this.allRunBoundsMap[li + '|' + ri]
+        if (db && fi - 1 >= db.min && fi <= db.max) return 'run-bound-dim-bond'
+      }
+      return ''
+    },
     footColClass (li, fi) {
       var key = li + '-' + fi
-      if (this.chainHighlightPositions.indexOf(key) !== -1) return 'chain-sel'
-      if (this.badChainPositions.has(key)) return 'chain-hi'
+      if (this.step === 3 || this.composing) {
+        if (this.chainHighlightPositions.indexOf(key) !== -1) return 'chain-sel'
+        if (this.badChainPositions.has(key)) return 'chain-hi'
+        return ''
+      }
+      var foot = this.lines[li] && this.lines[li].feet[fi]
+      if (foot && !this.isFootClassValid(li, fi, foot)) return 'col-class-bad'
       return ''
     },
     footClassColClass (li, fi, foot) {
       var key = li + '-' + fi
-      if (this.chainHighlightPositions.indexOf(key) !== -1) return 'chain-sel'
+      if (this.step === 3 || this.composing) {
+        if (this.chainHighlightPositions.indexOf(key) !== -1) return 'chain-sel'
+        if (this.badChainPositions.has(key)) return 'chain-hi'
+        return 'class-ok'
+      }
       if (!this.isFootClassValid(li, fi, foot)) return 'class-bad'
-      if (this.badChainPositions.has(key)) return 'chain-hi'
       return 'class-ok'
     },
     runLocation (run) {
@@ -705,6 +920,52 @@ export default {
       }
       return 'அடி ' + (first.li + 1) + ' சீர் ' + (first.fi + 1) + ' – அடி ' + (last.li + 1) + ' சீர் ' + (last.fi + 1)
     },
+    isInAnyRun (li, fi) {
+      for (var ri = 0; ri < this.linkageRuns.length; ri++) {
+        var db = this.allRunBoundsMap[li + '|' + ri]
+        if (db && fi >= db.min && fi <= db.max) return true
+      }
+      return false
+    },
+    unselectedRunEndAt (li, fi) {
+      for (var ri = 0; ri < this.linkageRuns.length; ri++) {
+        if (ri === this.activeRunIndex) continue
+        var db = this.allRunBoundsMap[li + '|' + ri]
+        if (db && db.max === fi) return ri
+      }
+      return -1
+    },
+    isActiveRunLine (li) {
+      var run = this.linkageRuns[this.activeRunIndex]
+      if (!run) return false
+      var first = run.leftAnchor || run.positions[0]
+      return first && first.li === li
+    },
+    selectRunByFoot (li, fi) {
+      for (var ri = 0; ri < this.linkageRuns.length; ri++) {
+        var run = this.linkageRuns[ri]
+        var pts = run.leftAnchor ? [run.leftAnchor].concat(run.positions) : run.positions.slice()
+        if (pts.some(function (p) { return p.li === li && p.fi === fi })) {
+          this.selectRun(ri)
+          return
+        }
+      }
+    },
+    selectRun (ri) {
+      this.activeRunIndex = ri
+      this.activeChainKey = null
+      this.chainHighlightPositions = []
+      var run = this.linkageRuns[ri]
+      if (!run || !run.positions.length) { this.activeSolBounds = {}; return }
+      var bounds = {}
+      var addPoint = function (p) {
+        if (!bounds[p.li]) bounds[p.li] = { min: p.fi, max: p.fi }
+        else { bounds[p.li].min = Math.min(bounds[p.li].min, p.fi); bounds[p.li].max = Math.max(bounds[p.li].max, p.fi) }
+      }
+      if (run.leftAnchor) addPoint(run.leftAnchor)
+      run.positions.forEach(addPoint)
+      this.activeSolBounds = bounds
+    },
     toggleChain (ri, si, sol) {
       var key = ri + ':' + si
       if (this.activeChainKey === key) {
@@ -715,23 +976,42 @@ export default {
       this.chainHighlightPositions = sol
         .filter(function (step) { return step.changed })
         .map(function (step) { return step.li + '-' + step.fi })
+      // keep activeSolBounds from selectRun so the full-run rectangle stays
     },
     clearChain () {
       this.activeChainKey = null
       this.chainHighlightPositions = []
+      // restore run-level bounding box if a run is still selected
+      var run = this.linkageRuns[this.activeRunIndex]
+      if (run && run.positions.length) {
+        var bounds = {}
+        var addPoint = function (p) {
+          if (!bounds[p.li]) bounds[p.li] = { min: p.fi, max: p.fi }
+          else { bounds[p.li].min = Math.min(bounds[p.li].min, p.fi); bounds[p.li].max = Math.max(bounds[p.li].max, p.fi) }
+        }
+        if (run.leftAnchor) addPoint(run.leftAnchor)
+        run.positions.forEach(addPoint)
+        this.activeSolBounds = bounds
+      } else {
+        this.activeSolBounds = {}
+      }
     },
     ruleIcon (r) { return r === '1' ? 'check_circle' : r === 'info' ? 'info' : 'cancel' },
     ruleColor (r) { return r === '1' ? 'positive' : r === 'info' ? 'grey' : 'negative' },
     async goToStep2 () {
       if (!this.parsedResult) await this.parseVerse()
       if (this.step1Valid) {
-        this.step = 2
         await this.fetchSuggestions()
-        this.fixPhase = this.classErrors.length === 0 ? 'bonds' : 'classes'
+        if (this.classErrors.length === 0) {
+          await this.checkBondsForFix()
+        } else {
+          this.step = 2
+        }
       }
     },
     async parseVerse () {
       if (!this.text || !this.text.trim()) { this.parsedResult = null; this.editableWords = []; return }
+      this.text = this.text.split('\n').map(l => l.trim().replace(/ +/g, ' ')).join('\n').trim()
       this.showProgress = true
       const xml = await this.convertAsync(this.text)
       this.parsedResult = await this.getJson(xml)
@@ -753,7 +1033,13 @@ export default {
       try {
         const xml = await this.convertAsync(verse)
         this.parsedResult = await this.getJson(xml)
-        if (this.step === 2) await this.fetchSuggestions(verse)
+        if (this.step === 2 || this.step === 3) {
+          await this.fetchSuggestions(verse)
+          if (this.step === 3) {
+            if (this.linkageRuns.length) this.selectRun(0)
+            else { this.activeSolBounds = {}; this.activeChainKey = null; this.chainHighlightPositions = [] }
+          }
+        }
       } catch (_) {}
       this.showProgress = false
     },
@@ -790,7 +1076,8 @@ export default {
         await this.fetchSuggestions(this.composedVerse)
       } catch (_) {}
       this.showProgress = false
-      this.fixPhase = 'bonds'
+      this.step = 3
+      this.$nextTick(() => { if (this.linkageRuns.length) this.selectRun(0) })
     },
     async checkBonds () {
       this.showProgress = true
@@ -842,9 +1129,11 @@ export default {
         if (resp.ok) {
           const data = await resp.json()
           this.linkageRuns = data.runs || []
+          this.activeRunIndex = 0
         }
       } catch (_) {
         this.linkageRuns = []
+        this.activeRunIndex = 0
       }
     },
     copyVerse () {
@@ -860,14 +1149,17 @@ export default {
     },
     restart () {
       this.step = 1
+      this.entryMode = null
       this.composing = false
       this.composePhase = 1
-      this.fixPhase = 'classes'
+      this.activeRunIndex = 0
       this.text = ''
       this.editableWords = []
       this.linkageRuns = []
       this.activeChainKey = null
       this.chainHighlightPositions = []
+      this.activeSolBounds = {}
+      this.activeClassErrIdx = -1
       this.parsedResult = null
     }
   }

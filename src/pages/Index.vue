@@ -91,13 +91,13 @@
   </div>
 </social-sharing>
   <div class="q-mt-md q-pa-md q-gutter-sm" v-if="hasProsodicErrors && !showYappuruppu">
-    <q-banner class="bg-grey-8 text-white tamil" dense rounded>
+    <q-banner inline-actions class="bg-grey-8 text-white tamil" dense rounded>
       <template v-slot:avatar>
         <q-icon name="auto_awesome" color="white" size="24px"/>
       </template>
-      AI மூலம் இந்தப் பாவை திருத்திக்கொள்ளலாம்.
       <template v-slot:action>
-        <q-btn color="grey-10" label="AI-யால் திருத்துக" icon="build" @click="fixWithAI" dense/>
+        <q-btn flat color="white" label="சுயமாக திருத்துக" icon="edit" @click.stop="fixManually" dense class="q-mr-sm"/>
+        <q-btn flat color="white" label="AI-யால் திருத்துக" icon="stars" @click.stop="fixWithAI" dense/>
       </template>
     </q-banner>
   </div>
@@ -446,6 +446,12 @@ export default {
       this.$router.push({
         path: '/ai',
         query: { verse: this.text, verseType: this.checkType.value }
+      })
+    },
+    fixManually: function () {
+      this.$router.push({
+        path: '/venpa-fixer',
+        query: { verse: this.text }
       })
     },
     activateVenpaCheck: function () {
