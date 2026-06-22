@@ -18,8 +18,8 @@
         <div class="col-xs-12 col-md-8 col-lg-6">
           <q-card flat bordered class="q-pa-lg text-center">
             <div class="tamil verse-text q-mb-sm" style="white-space:pre-line;font-size:1.4em;line-height:2.2">{{ verse }}</div>
-            <div class="text-grey-6 tamil q-mt-sm" style="font-size:0.9em" v-if="metre">{{ metre }}</div>
             <div class="text-grey-5 q-mt-xs" style="font-size:0.8em">{{ createdDate }}</div>
+            <div class="text-grey-6 tamil q-mt-xs" style="font-size:0.9em" v-if="metre">{{ metre }}</div>
           </q-card>
 
           <div class="row justify-center q-gutter-xs q-mt-md items-center">

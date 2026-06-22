@@ -10,10 +10,16 @@ export const ShareMixin = {
   methods: {
     async _ensureSaved (verse) {
       if (this._poemId && this._poemVerse === verse) return this._poemId
+      let metre = null
+      try {
+        const xml = await this.convertAsync(verse)
+        const parsed = await this.getJson(xml)
+        metre = parsed && parsed.verse && parsed.verse.$ ? parsed.verse.$.metre : null
+      } catch (_) {}
       const resp = await fetch(AI_BACKEND + '/compositions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ verse: verse.trim() })
+        body: JSON.stringify({ verse: verse.trim(), metre })
       })
       const { id } = await resp.json()
       this._poemId = id
