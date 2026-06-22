@@ -7,7 +7,8 @@
     "dev": "nodemon server.js",
     "test:unit": "node --test test/unit.test.js",
     "test:integration": "node --test test/integration.test.js",
-    "test": "node --test test/unit.test.js && node --test test/integration.test.js"
+    "test:types": "node --test test/types.test.js",
+    "test": "node --test test/unit.test.js && node --test test/integration.test.js && node --test test/types.test.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
