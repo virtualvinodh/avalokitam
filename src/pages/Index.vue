@@ -73,15 +73,7 @@
 <div class="row q-mt-md q-gutter-xs items-center" v-if="result">
   <q-btn dense flat icon="bookmark" label="சேமி" color="grey-7" class="tamil" size="sm" :loading="saving" @click="saveAndCopy(text)" />
   <q-btn dense flat icon="image" label="படம்" color="grey-7" class="tamil" size="sm" @click="downloadImage(text)" />
-  <q-btn dense flat size="sm" @click="shareX(text)" title="X (Twitter)">
-    <img src="statics/twitter.svg" style="width:16px;height:16px;opacity:0.6" />
-  </q-btn>
-  <q-btn dense flat size="sm" @click="shareFacebook(text)" title="Facebook">
-    <img src="statics/facebook.svg" style="width:16px;height:16px;opacity:0.6" />
-  </q-btn>
-  <q-btn dense flat size="sm" @click="shareInstagram(text)" title="Instagram">
-    <img src="statics/instagram.svg" style="width:16px;height:16px;opacity:0.6" />
-  </q-btn>
+  <q-btn dense flat icon="share" label="பகிர்" color="grey-7" class="tamil" size="sm" @click="shareInstagram(text)" />
 </div>
   <div class="q-mt-md q-pa-md q-gutter-sm" v-if="hasProsodicErrors && !showYappuruppu">
     <q-banner inline-actions class="bg-grey-8 text-white tamil" dense rounded>

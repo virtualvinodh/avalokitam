@@ -244,15 +244,7 @@
           </q-stepper-navigation>
           <div class="row justify-center q-gutter-xs q-mt-sm items-center">
             <q-btn dense flat icon="image" label="படம்" color="grey-7" class="tamil" size="sm" @click="downloadImage(composedVerse)" />
-            <q-btn dense flat size="sm" @click="shareX(composedVerse)" title="X (Twitter)">
-              <img src="statics/twitter.svg" style="width:16px;height:16px;opacity:0.6" />
-            </q-btn>
-            <q-btn dense flat size="sm" @click="shareFacebook(composedVerse)" title="Facebook">
-              <img src="statics/facebook.svg" style="width:16px;height:16px;opacity:0.6" />
-            </q-btn>
-            <q-btn dense flat size="sm" @click="shareInstagram(composedVerse)" title="Instagram">
-              <img src="statics/instagram.svg" style="width:16px;height:16px;opacity:0.6" />
-            </q-btn>
+            <q-btn dense flat icon="share" label="பகிர்" color="grey-7" class="tamil" size="sm" @click="shareInstagram(composedVerse)" />
           </div>
         </div>
       </q-step>

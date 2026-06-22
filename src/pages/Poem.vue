@@ -23,17 +23,9 @@
           </q-card>
 
           <div class="row justify-center q-gutter-xs q-mt-md items-center">
-            <q-btn dense flat icon="link" label="பகிர்" color="grey-7" class="tamil" size="sm" @click="shareLink(verse)" />
+            <q-btn dense flat icon="link" label="இணைப்பு" color="grey-7" class="tamil" size="sm" @click="shareLink(verse)" />
             <q-btn dense flat icon="image" label="படம்" color="grey-7" class="tamil" size="sm" @click="downloadImage(verse)" />
-            <q-btn dense flat size="sm" @click="shareX(verse)" title="X (Twitter)">
-              <img src="statics/twitter.svg" style="width:16px;height:16px;opacity:0.6" />
-            </q-btn>
-            <q-btn dense flat size="sm" @click="shareFacebook(verse)" title="Facebook">
-              <img src="statics/facebook.svg" style="width:16px;height:16px;opacity:0.6" />
-            </q-btn>
-            <q-btn dense flat size="sm" @click="shareInstagram(verse)" title="Instagram">
-              <img src="statics/instagram.svg" style="width:16px;height:16px;opacity:0.6" />
-            </q-btn>
+            <q-btn dense flat icon="share" label="பகிர்" color="grey-7" class="tamil" size="sm" @click="shareInstagram(verse)" />
             <q-btn dense flat icon="find_in_page" label="ஆராய்க" color="grey-7" class="tamil" size="sm" @click="$router.push({ path: '/analyzer', query: { text: verse } })" />
           </div>
         </div>
