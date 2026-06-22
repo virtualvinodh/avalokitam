@@ -23,8 +23,8 @@ function addUsage (acc, u) {
 }
 
 async function callGemini (prompt, thinkingLevel, label = '') {
-  thinkingLevel = thinkingLevel || process.env.GEMINI_THINKING_LEVEL || 'low'
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-pro'
+  thinkingLevel = thinkingLevel || process.env.GEMINI_THINKING_LEVEL || 'minimal'
+  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`
   const body = {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],

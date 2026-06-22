@@ -52,7 +52,7 @@ cp backend/.env.example backend/.env
 | `PHP_API_URL` | URL of the Tamil prosody parser, e.g. `http://localhost:8080/api.php` |
 | `PORT` | Node backend port (default `3001`) |
 | `DEV_TOKEN` | Optional dev token to bypass AI usage limits |
-| `DB_PATH` | Path to SQLite database for saved compositions (default `./compositions.db`) |
+| `DB_PATH` | Path to SQLite database for saved compositions (default `/tmp/compositions.db`) |
 
 `backend/.env` is gitignored — never commit it. For production (Render), set these in the Render dashboard.
 
@@ -87,30 +87,28 @@ The app ships as a single Docker container (PHP parser + Node backend + Quasar S
 3. Set **Port** to `8080`.
 4. Add these **Environment Variables** in the Render dashboard:
 
-| Variable | Value |
-|----------|-------|
-| `GEMINI_API_KEY` | your Gemini API key |
-| `GEMINI_MODEL` | e.g. `gemini-2.5-pro` |
-| `GEMINI_THINKING_LEVEL` | `minimal` (recommended) |
-| `PHP_API_URL` | `http://localhost:8080/api.php` (PHP runs inside the same container) |
-| `PORT` | `3001` (Node backend port — Apache proxies to it internally) |
-| `DEV_TOKEN` | optional — set a secret string to bypass AI usage limits |
-| `DB_PATH` | `/var/data/compositions.db` (requires persistent disk — see below) |
+| Variable | Required | Value |
+|----------|----------|-------|
+| `GEMINI_API_KEY` | **Yes** | your Gemini API key |
+| `GEMINI_MODEL` | No | defaults to `gemini-2.5-flash` |
+| `GEMINI_THINKING_LEVEL` | No | defaults to `minimal` |
+| `DEV_TOKEN` | No | set a secret string to bypass AI usage limits |
+| `DB_PATH` | No | defaults to `/tmp/compositions.db` (lost on redeploy) — set to `/var/data/compositions.db` for persistence (see below) |
 
 5. Deploy. Render builds the image and starts the container.
 
 ## Notes
 
-- `GEMINI_API_KEY` must be set in the Render dashboard — never bake it into the image.
-- `PHP_API_URL` points to `localhost` because the PHP parser and Node backend share the same container.
+- `GEMINI_API_KEY` is the only required env var — everything else has sensible defaults.
+- `PHP_API_URL` and `PORT` are set automatically inside the container by supervisord — do not set them in Render.
 - The free Render tier spins down after inactivity. The $7/month starter plan keeps it always on.
 
 ## Persistent disk (SQLite)
 
-Saved compositions are stored in SQLite. On Render, add a **Disk** under your service settings:
+Saved compositions are stored in SQLite. By default they go to `/tmp` and are lost on each redeploy. For persistence, add a **Disk** under your Render service settings:
 
 - **Mount path:** `/var/data`
 - **Size:** 1 GB is sufficient
 
-Then set `DB_PATH=/var/data/compositions.db` in the environment variables. Without this the database resets on every deploy.
+Then set `DB_PATH=/var/data/compositions.db` in the Render environment variables.
 
