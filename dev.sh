@@ -30,7 +30,7 @@ if docker ps --format "{{.Ports}}" 2>/dev/null | grep -q "0.0.0.0:${PHP_PORT}->"
 elif command -v php >/dev/null 2>&1; then
   PHP_RUNNING=0
 else
-  echo -e "${RED}PHP parser not available: install php locally or start the Docker container (./build.sh)${NC}"
+  echo -e "${RED}PHP parser not available: install php locally or run: docker run -d -p 8080:8080 virtualvinodh/avalokitam:latest${NC}"
   exit 1
 fi
 

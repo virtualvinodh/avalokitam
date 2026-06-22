@@ -187,7 +187,7 @@ export default {
 
 @font-face {
   font-family: 'e-Pandya';
-  src: url('https://cdn.jsdelivr.net/gh/virtualvinodh/aksharamukha/aksharamukha-front/src/statics/e-VatteluttuOT.ttf')
+  src: url('../statics/e-VatteluttuOT.ttf')
 }
 
 @font-face {

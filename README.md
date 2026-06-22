@@ -48,9 +48,11 @@ cp backend/.env.example backend/.env
 |----------|-------------|
 | `GEMINI_API_KEY` | Gemini API key (required for AI features) |
 | `GEMINI_MODEL` | Model name, e.g. `gemini-2.5-pro` |
+| `GEMINI_THINKING_LEVEL` | Thinking budget: `minimal` / `low` / `medium` / `high` (default `minimal`) |
 | `PHP_API_URL` | URL of the Tamil prosody parser, e.g. `http://localhost:8080/api.php` |
 | `PORT` | Node backend port (default `3001`) |
 | `DEV_TOKEN` | Optional dev token to bypass AI usage limits |
+| `DB_PATH` | Path to SQLite database for saved compositions (default `./compositions.db`) |
 
 `backend/.env` is gitignored — never commit it. For production (Render), set these in the Render dashboard.
 
@@ -68,9 +70,10 @@ Locally the parser runs on port `8080` (Docker container or `php -S localhost:80
 From the `backend/` directory:
 
 ```bash
-npm run test:unit         # 10 unit tests — no parser needed, runs in ~50ms
-npm run test:integration  # 8 integration tests — requires PHP parser running
-npm test                  # both
+npm run test:unit         # unit tests — no parser needed, runs in ~50ms
+npm run test:integration  # integration tests — requires PHP parser running
+npm run test:types        # 26 metre-detection tests using /types page verses
+npm test                  # all of the above
 ```
 
 # Render deployment
@@ -88,9 +91,11 @@ The app ships as a single Docker container (PHP parser + Node backend + Quasar S
 |----------|-------|
 | `GEMINI_API_KEY` | your Gemini API key |
 | `GEMINI_MODEL` | e.g. `gemini-2.5-pro` |
+| `GEMINI_THINKING_LEVEL` | `minimal` (recommended) |
 | `PHP_API_URL` | `http://localhost:8080/api.php` (PHP runs inside the same container) |
 | `PORT` | `3001` (Node backend port — Apache proxies to it internally) |
 | `DEV_TOKEN` | optional — set a secret string to bypass AI usage limits |
+| `DB_PATH` | `/var/data/compositions.db` (requires persistent disk — see below) |
 
 5. Deploy. Render builds the image and starts the container.
 
@@ -100,9 +105,12 @@ The app ships as a single Docker container (PHP parser + Node backend + Quasar S
 - `PHP_API_URL` points to `localhost` because the PHP parser and Node backend share the same container.
 - The free Render tier spins down after inactivity. The $7/month starter plan keeps it always on.
 
-# GAE
+## Persistent disk (SQLite)
 
-COPY files from phpbackend to dist, compile the frontend and then deploy to GAE
+Saved compositions are stored in SQLite. On Render, add a **Disk** under your service settings:
 
-#
+- **Mount path:** `/var/data`
+- **Size:** 1 GB is sufficient
+
+Then set `DB_PATH=/var/data/compositions.db` in the environment variables. Without this the database resets on every deploy.
 

@@ -230,6 +230,7 @@
                   <div class="tamil q-pa-md text-white" style="white-space:pre-line; font-size:1.15em; line-height:1.9">{{ finalVerse }}</div>
                   <div class="row q-px-sm q-pb-sm">
                     <q-btn flat dense dark icon="file_copy" label="நகலெடு" class="tamil text-grey-4" size="sm" @click="copyVerse" />
+                    <q-btn flat dense dark icon="bookmark" label="சேமி" class="tamil text-grey-4" size="sm" :loading="saving" @click="saveAndCopy(finalVerse)" />
                     <q-btn flat dense dark icon="find_in_page" label="ஆராய்க" class="tamil text-grey-4" size="sm" @click="openInAnalyzer" />
                     <q-btn flat dense dark icon="refresh" label="மீண்டும்" class="tamil text-grey-4" size="sm" @click="run" />
                   </div>
@@ -302,6 +303,7 @@
               <div class="tamil" style="white-space:pre-line; font-size:1.15em; line-height:1.9">{{ finalVerse }}</div>
               <template v-slot:action>
                 <q-btn flat dense icon="file_copy" label="நகலெடு" class="tamil" @click="copyVerse" />
+                <q-btn flat dense icon="bookmark" label="சேமி" class="tamil" :loading="saving" @click="saveAndCopy(finalVerse)" />
                 <q-btn flat dense icon="build" label="சுயமாக திருத்துக" class="tamil" @click="openInFixer" />
                 <q-btn flat dense icon="refresh" label="மீண்டும்" class="tamil" @click="run" />
               </template>
@@ -339,6 +341,7 @@
 <script>
 import ScansionAll from '../components/ScansionAll'
 import { LinkMixin } from '../mixin/LinkMixin'
+import { ShareMixin } from '../mixin/ShareMixin'
 
 function copyToClipboard (text) {
   const el = document.createElement('textarea')
@@ -366,7 +369,7 @@ function getOrCreateSessionId () {
 export default {
   name: 'PageAI',
   components: { ScansionAll },
-  mixins: [LinkMixin],
+  mixins: [LinkMixin, ShareMixin],
   data () {
     return {
       mode: 'generate',
@@ -384,6 +387,7 @@ export default {
       pendingPrompt: null,
       remaining: null,
       globalRemaining: null,
+      saving: false,
       explanation: null,
       sandhi: null,
       literal: null,

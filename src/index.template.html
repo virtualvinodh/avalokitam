@@ -3,14 +3,13 @@
   <head>
     <title><%= htmlWebpackPlugin.options.productName %></title>
 
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-44456622-1"></script>
+    <!-- Google Analytics GA4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-7XW3KE2BGM"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-
-      gtag('config', 'UA-44456622-1');
+      gtag('config', 'G-7XW3KE2BGM', { send_page_view: false });
     </script>
 
     <meta charset="utf-8">

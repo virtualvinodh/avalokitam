@@ -1,1 +1,2 @@
-docker pull virtualvinodh/avalokitam
+docker pull virtualvinodh/avalokitam:latest
+pause
