@@ -196,7 +196,7 @@ export const LinkMixin = {
       return result['verse']['VenpaLastWordClass'][0]
     },
     lettersGet: function (result) {
-      return result['verse']['Letter'][0].$
+      return result['verse']['Letter'] && result['verse']['Letter'][0] ? result['verse']['Letter'][0].$ : {}
     },
     ornamentsGet: function (result) {
       var ornaments = {}

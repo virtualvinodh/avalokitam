@@ -123,6 +123,16 @@ export default {
   methods: {
     _shareUrl () {
       return window.location.href
+    },
+    shareLink () {
+      const url = window.location.href
+      const notify = () => this.$q.notify({ message: 'இணைப்பு நகலெடுக்கப்பட்டது!', color: 'grey-8', position: 'top', timeout: 2000 })
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(notify).catch(() => { this._fallbackCopy(url); notify() })
+      } else {
+        this._fallbackCopy(url)
+        notify()
+      }
     }
   }
 }
