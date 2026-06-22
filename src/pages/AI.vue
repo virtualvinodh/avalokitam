@@ -232,6 +232,7 @@
                     <q-btn flat dense dark icon="file_copy" label="நகலெடு" class="tamil text-grey-4" size="sm" @click="copyVerse" />
                     <q-btn flat dense dark icon="bookmark" label="சேமி" class="tamil text-grey-4" size="sm" :loading="saving" @click="saveAndCopy(finalVerse)" />
                     <q-btn flat dense dark icon="image" label="படம்" class="tamil text-grey-4" size="sm" @click="downloadImage(finalVerse)" />
+                    <q-btn flat dense dark icon="share" label="பகிர்" class="tamil text-grey-4" size="sm" @click="shareInstagram(finalVerse)" />
                     <q-btn flat dense dark icon="find_in_page" label="ஆராய்க" class="tamil text-grey-4" size="sm" @click="openInAnalyzer" />
                     <q-btn flat dense dark icon="refresh" label="மீண்டும்" class="tamil text-grey-4" size="sm" @click="run" />
                   </div>
@@ -306,6 +307,7 @@
                 <q-btn flat dense icon="file_copy" label="நகலெடு" class="tamil" @click="copyVerse" />
                 <q-btn flat dense icon="bookmark" label="சேமி" class="tamil" :loading="saving" @click="saveAndCopy(finalVerse)" />
                 <q-btn flat dense icon="image" label="படம்" class="tamil" @click="downloadImage(finalVerse)" />
+                <q-btn flat dense icon="share" label="பகிர்" class="tamil" @click="shareInstagram(finalVerse)" />
                 <q-btn flat dense icon="build" label="சுயமாக திருத்துக" class="tamil" @click="openInFixer" />
                 <q-btn flat dense icon="refresh" label="மீண்டும்" class="tamil" @click="run" />
               </template>
