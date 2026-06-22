@@ -170,7 +170,7 @@ app.post('/ai/stream', async (req, res) => {
 })
 
 const PORT = process.env.PORT || 3001
-app.listen(PORT, () => {
+app.listen(PORT, '127.0.0.1', () => {
   console.log(`Avalokitam AI backend running on port ${PORT}`)
   console.log(`Gemini model: ${process.env.GEMINI_MODEL}`)
   console.log(`PHP API: ${process.env.PHP_API_URL}`)
