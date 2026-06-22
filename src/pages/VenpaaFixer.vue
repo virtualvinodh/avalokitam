@@ -492,7 +492,7 @@ import { LinkMixin } from '../mixin/LinkMixin'
 import { ShareMixin } from '../mixin/ShareMixin'
 var _ = require('underscore')
 
-const AI_BACKEND = 'http://localhost:3001'
+const AI_BACKEND = process.env.AI_BACKEND || ''
 
 var VALID_LAST_CLASSES = ['நாள்', 'மலர்', 'காசு', 'பிறப்பு']
 

@@ -355,7 +355,7 @@ function copyToClipboard (text) {
   return ok ? Promise.resolve() : Promise.reject(new Error('copy failed'))
 }
 
-const AI_BACKEND = 'http://localhost:3001'
+const AI_BACKEND = process.env.AI_BACKEND || ''
 
 function getOrCreateSessionId () {
   let id = localStorage.getItem('ai_session_id')

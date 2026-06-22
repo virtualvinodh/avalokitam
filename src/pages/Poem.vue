@@ -78,7 +78,7 @@ import LinkageDisplay from '../components/LinkageDisplay'
 import LineDisplay from '../components/LineDisplay'
 import ScansionAll from '../components/ScansionAll'
 
-const AI_BACKEND = process.env.AI_BACKEND || 'http://localhost:3001'
+const AI_BACKEND = process.env.AI_BACKEND || ''
 
 export default {
   name: 'PoemPage',

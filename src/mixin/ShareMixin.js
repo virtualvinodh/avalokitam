@@ -1,4 +1,4 @@
-const AI_BACKEND = process.env.AI_BACKEND || 'http://localhost:3001'
+const AI_BACKEND = process.env.AI_BACKEND || ''
 
 export const ShareMixin = {
   data () {
