@@ -66,6 +66,14 @@ export const ShareMixin = {
       const id = await this._ensureSaved(verse)
       window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(this._poemUrl(id)), '_blank', 'noopener')
     },
+    async downloadImage (verse) {
+      const blob = await this._verseToImage(verse)
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = 'venpaa.png'
+      a.click()
+      URL.revokeObjectURL(a.href)
+    },
     async shareInstagram (verse) {
       const blob = await this._verseToImage(verse)
       const file = new File([blob], 'venpaa.png', { type: 'image/png' })
