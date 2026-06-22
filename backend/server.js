@@ -9,8 +9,8 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
-const FREE_LIMIT = 5
-const DAILY_GLOBAL_LIMIT = 200
+const FREE_LIMIT = parseInt(process.env.FREE_LIMIT) || 5
+const DAILY_GLOBAL_LIMIT = parseInt(process.env.DAILY_GLOBAL_LIMIT) || 200
 const usage = new Map() // key → { count, date }
 let globalUsage = { count: 0, date: '' }
 
