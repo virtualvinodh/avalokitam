@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: avalokitam
+    runtime: docker
+    plan: starter
+    port: 8080
