@@ -68,6 +68,13 @@ const routes = [
     ]
   },
   {
+    path: '/poem/:id',
+    component: () => import('layouts/MyLayout.vue'),
+    children: [
+      { path: '', component: () => import('pages/Poem.vue') }
+    ]
+  },
+  {
     path: '/about',
     component: () => import('layouts/MyLayout.vue'),
     children: [

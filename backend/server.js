@@ -3,6 +3,7 @@ const express = require('express')
 const cors = require('cors')
 const { runLoop, callParser, parseXML } = require('./geminiLoop')
 const { getSuggestions, getRunSuggestions } = require('./errorFeedback')
+const { saveComposition, getComposition } = require('./db')
 
 const app = express()
 app.use(cors())
@@ -74,6 +75,19 @@ app.post('/venpa/suggest', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
+})
+
+app.post('/compositions', (req, res) => {
+  const { verse, metre } = req.body
+  if (!verse || !verse.trim()) return res.status(400).json({ error: 'verse required' })
+  const id = saveComposition(verse.trim(), metre)
+  res.json({ id })
+})
+
+app.get('/compositions/:id', (req, res) => {
+  const comp = getComposition(req.params.id)
+  if (!comp) return res.status(404).json({ error: 'not found' })
+  res.json(comp)
 })
 
 app.get('/health', (_req, res) => {

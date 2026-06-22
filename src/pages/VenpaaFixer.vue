@@ -239,10 +239,10 @@
             style="white-space: pre-line; display: inline-block; max-width: 100%">{{ composedVerse }}</div>
           <q-stepper-navigation class="q-mt-lg">
             <q-btn flat @click="restart" color="grey" label="மீண்டும்" class="tamil q-mr-sm" />
-            <q-btn @click="copyVerse" color="primary" icon="content_copy" label="நகலெடு" class="tamil" />
+            <q-btn @click="copyVerse" color="primary" icon="content_copy" label="நகலெடு" class="tamil q-mr-sm" />
+            <q-btn @click="saveAndCopy(composedVerse)" color="grey-8" icon="bookmark" label="சேமி" class="tamil" :loading="saving" />
           </q-stepper-navigation>
           <div class="row justify-center q-gutter-xs q-mt-sm items-center">
-            <q-btn dense flat icon="link" label="பகிர்" color="grey-7" class="tamil" size="sm" @click="shareLink(composedVerse)" />
             <q-btn dense flat size="sm" @click="shareX(composedVerse)" title="X (Twitter)">
               <img src="statics/twitter.svg" style="width:16px;height:16px;opacity:0.6" />
             </q-btn>
@@ -533,6 +533,7 @@ export default {
   data () {
     return {
       step: 1,
+      saving: false,
       inputMode: 'fix',
       composeType: 'venpaa',
       activeRunIndex: 0,

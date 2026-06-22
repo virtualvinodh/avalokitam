@@ -70,8 +70,8 @@
         <q-checkbox v-model="aythamkuri" class="tamil col-lg-1" @input="demo" label="ஆய்தத்தை குறில் எழுத்தாக அலகிடுக"/>
         <q-checkbox v-model="extralong" class="tamil col-lg-1" @input="demo" label="உயிரளபெடையை நெடில் எழுத்தாக அலகிடுக"/>
     </q-expansion-item>
-<div class="row q-mt-md q-gutter-xs items-center" v-if="text">
-  <q-btn dense flat icon="link" label="பகிர்" color="grey-7" class="tamil" size="sm" @click="shareLink(text)" />
+<div class="row q-mt-md q-gutter-xs items-center" v-if="result">
+  <q-btn dense flat icon="bookmark" label="சேமி" color="grey-7" class="tamil" size="sm" :loading="saving" @click="saveAndCopy(text)" />
   <q-btn dense flat size="sm" @click="shareX(text)" title="X (Twitter)">
     <img src="statics/twitter.svg" style="width:16px;height:16px;opacity:0.6" />
   </q-btn>
@@ -244,6 +244,7 @@ export default {
   data () {
     return {
       showAIBanner: localStorage.getItem('ai_banner_dismissed') !== '1',
+      saving: false,
       text: '',
       visibleYappuruppu: false,
       modifyKazhinediladi: false,
