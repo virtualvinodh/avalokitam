@@ -121,7 +121,7 @@ export const ShareMixin = {
 
         ctx.fillStyle = 'rgba(255,255,255,0.35)'
         ctx.font = '24px "Mukta Malar", sans-serif'
-        ctx.fillText('அவலோகிதம் · avalokitam.app', W / 2, H - 60)
+        ctx.fillText('avalokitam.com', W / 2, H - 60)
 
         canvas.toBlob(blob => resolve(blob), 'image/png')
       })

@@ -129,11 +129,12 @@ export const LinkMixin = {
   methods: {
     lineCountGet: function (verse) {
       var text = verse
+      text = text.replace(/—/g, '-')
       text = text.replace(/ - /g, ' ')
       text = text.replace(/- /g, ' ')
       text = text.replace(/ -/g, ' ')
       text = text.replace(/-/g, ' ')
-      return text.split('\n').filter(x => x !== '').map(x => x.trim().split(' ').length)
+      return text.split('\n').filter(x => x !== '').map(x => x.trim().split(' ').filter(x => x !== '').length)
     },
     closestType: function (text, verseResult) {
       var resultCheck = []
