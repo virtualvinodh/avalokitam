@@ -1865,6 +1865,7 @@ class ProsodyParseTree
 
 		$TotalWordCountSuridhagam = 0;
 		$AllWordCount = 0;
+		$AllowedWordClassCount = 0;
 
 		foreach ( $rit as $Line => $Words ) {
 
