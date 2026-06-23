@@ -25,7 +25,7 @@
         flat
         bordered
         dense
-        :rows-per-page-options="[]"
+        :pagination="{rowsPerPage: 0}"
         hide-pagination
       >
         <template v-slot:body-cell-verse="props">
@@ -84,7 +84,7 @@ export default {
     async fetch () {
       this.loading = true
       try {
-        const resp = await fetch(`${AI_BACKEND}/admin/compositions?page=${this.page}&limit=50`, {
+        const resp = await fetch(`${AI_BACKEND}/admin/compositions?page=${this.page}&limit=10`, {
           headers: { 'x-dev-token': this.token }
         })
         if (resp.status === 401) { this.authed = false; return }
