@@ -75,6 +75,13 @@ const routes = [
     ]
   },
   {
+    path: '/admin',
+    component: () => import('layouts/MyLayout.vue'),
+    children: [
+      { path: '', component: () => import('pages/Admin.vue') }
+    ]
+  },
+  {
     path: '/about',
     component: () => import('layouts/MyLayout.vue'),
     children: [

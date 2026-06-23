@@ -3,7 +3,7 @@ const express = require('express')
 const cors = require('cors')
 const { runLoop, callParser, parseXML } = require('./geminiLoop')
 const { getSuggestions, getRunSuggestions } = require('./errorFeedback')
-const { saveComposition, getComposition } = require('./db')
+const { saveComposition, getComposition, listCompositions } = require('./db')
 
 const app = express()
 app.use(cors())
@@ -75,6 +75,17 @@ app.post('/venpa/suggest', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
+})
+
+app.get('/admin/compositions', (req, res) => {
+  const token = req.headers['x-dev-token'] || req.query.token
+  if (!process.env.DEV_TOKEN || token !== process.env.DEV_TOKEN) {
+    return res.status(401).json({ error: 'unauthorized' })
+  }
+  const page = Math.max(1, parseInt(req.query.page) || 1)
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50))
+  const { rows, total } = listCompositions(page, limit)
+  res.json({ compositions: rows, total, page, pages: Math.ceil(total / limit), limit })
 })
 
 app.post('/compositions', (req, res) => {

@@ -32,4 +32,11 @@ function getComposition (id) {
   return db.prepare('SELECT * FROM compositions WHERE id = ?').get(id) || null
 }
 
-module.exports = { saveComposition, getComposition }
+function listCompositions (page, limit) {
+  const offset = (page - 1) * limit
+  const rows = db.prepare('SELECT * FROM compositions ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit, offset)
+  const { total } = db.prepare('SELECT COUNT(*) as total FROM compositions').get()
+  return { rows, total }
+}
+
+module.exports = { saveComposition, getComposition, listCompositions }
