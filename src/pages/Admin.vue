@@ -66,7 +66,7 @@
             <div class="text-caption text-grey-6 tamil">திருத்தம்</div>
           </q-card>
           <q-card flat bordered class="col-auto q-pa-sm text-center" style="min-width:90px">
-            <div class="text-h6">{{ totals.ai_failures }}</div>
+            <div class="text-h6">{{ failurePctTotal }}</div>
             <div class="text-caption text-grey-6 tamil">தோல்வி</div>
           </q-card>
           <q-card flat bordered class="col-auto q-pa-sm text-center" style="min-width:110px">
@@ -146,7 +146,16 @@ export default {
         { name: 'date', label: 'தேதி', field: 'date', align: 'left', style: 'width:110px' },
         { name: 'generations', label: 'உருவாக்கம்', field: 'generations', align: 'right', style: 'width:90px' },
         { name: 'fixes', label: 'திருத்தம்', field: 'fixes', align: 'right', style: 'width:80px' },
-        { name: 'ai_failures', label: 'தோல்வி', field: 'ai_failures', align: 'right', style: 'width:70px' },
+        {
+          name: 'ai_failures',
+          label: 'தோல்வி %',
+          field: row => {
+            const total = row.generations + row.fixes
+            return total ? Math.round(row.ai_failures / total * 100) + '%' : '—'
+          },
+          align: 'right',
+          style: 'width:80px'
+        },
         {
           name: 'avg_attempts',
           label: 'சராசரி முயற்சி',
@@ -188,6 +197,11 @@ export default {
       if (!this.totals) return '—'
       const total = (this.totals.generations || 0) + (this.totals.fixes || 0)
       return total ? Math.round(this.totals.first_try_successes / total * 100) + '%' : '—'
+    },
+    failurePctTotal () {
+      if (!this.totals) return '—'
+      const total = (this.totals.generations || 0) + (this.totals.fixes || 0)
+      return total ? Math.round(this.totals.ai_failures / total * 100) + '%' : '—'
     }
   },
   watch: {
