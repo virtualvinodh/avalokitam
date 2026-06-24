@@ -13,6 +13,22 @@ db.exec(`
   )
 `)
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS daily_stats (
+    date TEXT PRIMARY KEY,
+    generations INTEGER DEFAULT 0,
+    fixes INTEGER DEFAULT 0,
+    total_attempts INTEGER DEFAULT 0,
+    first_try_successes INTEGER DEFAULT 0,
+    ai_failures INTEGER DEFAULT 0,
+    fix_clicks INTEGER DEFAULT 0,
+    input_tokens INTEGER DEFAULT 0,
+    output_tokens INTEGER DEFAULT 0,
+    thinking_tokens INTEGER DEFAULT 0,
+    cost REAL DEFAULT 0
+  )
+`)
+
 function randomId () {
   return Math.random().toString(36).slice(2, 8)
 }
@@ -39,4 +55,47 @@ function listCompositions (page, limit) {
   return { rows, total }
 }
 
-module.exports = { saveComposition, getComposition, listCompositions }
+const upsertStat = db.prepare(`
+  INSERT INTO daily_stats (date, generations, fixes, total_attempts, first_try_successes, ai_failures, input_tokens, output_tokens, thinking_tokens, cost)
+  VALUES (@date, @generations, @fixes, @total_attempts, @first_try_successes, @ai_failures, @input_tokens, @output_tokens, @thinking_tokens, @cost)
+  ON CONFLICT(date) DO UPDATE SET
+    generations        = generations        + excluded.generations,
+    fixes              = fixes              + excluded.fixes,
+    total_attempts     = total_attempts     + excluded.total_attempts,
+    first_try_successes= first_try_successes+ excluded.first_try_successes,
+    ai_failures        = ai_failures        + excluded.ai_failures,
+    input_tokens       = input_tokens       + excluded.input_tokens,
+    output_tokens      = output_tokens      + excluded.output_tokens,
+    thinking_tokens    = thinking_tokens    + excluded.thinking_tokens,
+    cost               = cost               + excluded.cost
+`)
+
+function recordDailyStat ({ mode, attempts, firstTry, success, tokens }) {
+  const date = new Date().toISOString().slice(0, 10)
+  upsertStat.run({
+    date,
+    generations: mode === 'generate' ? 1 : 0,
+    fixes: mode === 'fix' ? 1 : 0,
+    total_attempts: attempts,
+    first_try_successes: firstTry ? 1 : 0,
+    ai_failures: success ? 0 : 1,
+    input_tokens: tokens.input || 0,
+    output_tokens: tokens.output || 0,
+    thinking_tokens: tokens.thinking || 0,
+    cost: tokens.cost || 0
+  })
+}
+
+function incrementFixClick () {
+  const date = new Date().toISOString().slice(0, 10)
+  db.prepare(`
+    INSERT INTO daily_stats (date, fix_clicks) VALUES (?, 1)
+    ON CONFLICT(date) DO UPDATE SET fix_clicks = fix_clicks + 1
+  `).run(date)
+}
+
+function getDailyStats (limit = 30) {
+  return db.prepare('SELECT * FROM daily_stats ORDER BY date DESC LIMIT ?').all(limit)
+}
+
+module.exports = { saveComposition, getComposition, listCompositions, recordDailyStat, incrementFixClick, getDailyStats }

@@ -561,6 +561,7 @@ export default {
       this.$router.push({ path: '/analyzer', query: { text: this.finalVerse } })
     },
     openInFixer () {
+      fetch(AI_BACKEND + '/ai/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'fix_click' }) }).catch(() => {})
       this.$router.push({ path: '/venpa-fixer', query: { verse: this.finalVerse } })
     }
   }

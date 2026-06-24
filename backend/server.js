@@ -3,7 +3,7 @@ const express = require('express')
 const cors = require('cors')
 const { runLoop, callParser, parseXML } = require('./geminiLoop')
 const { getSuggestions, getRunSuggestions } = require('./errorFeedback')
-const { saveComposition, getComposition, listCompositions } = require('./db')
+const { saveComposition, getComposition, listCompositions, recordDailyStat, incrementFixClick, getDailyStats } = require('./db')
 
 const app = express()
 app.use(cors())
@@ -75,6 +75,20 @@ app.post('/venpa/suggest', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
+})
+
+app.post('/ai/event', (req, res) => {
+  const { type } = req.body
+  if (type === 'fix_click') incrementFixClick()
+  res.json({ ok: true })
+})
+
+app.get('/admin/stats', (req, res) => {
+  const token = req.headers['x-dev-token'] || req.query.token
+  if (!process.env.DEV_TOKEN || token !== process.env.DEV_TOKEN) {
+    return res.status(401).json({ error: 'unauthorized' })
+  }
+  res.json({ stats: getDailyStats(60) })
 })
 
 app.get('/admin/compositions', (req, res) => {
@@ -170,6 +184,13 @@ app.post('/ai/stream', async (req, res) => {
     const result = await runLoop({ mode, topic, verse, verseType, lang, emit })
     if (result?.tokens) {
       recordTokens(result.tokens)
+      recordDailyStat({
+        mode,
+        attempts: result.iterations?.length || 1,
+        firstTry: (result.iterations?.length || 1) === 1 && result.success,
+        success: result.success,
+        tokens: result.tokens
+      })
       await emit({ type: 'tokens', ...result.tokens })
     }
     await emit({ type: 'usage', remaining, globalRemaining })
