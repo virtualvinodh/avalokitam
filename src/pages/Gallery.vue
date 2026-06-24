@@ -23,6 +23,9 @@
           <!-- Verse card -->
           <q-card flat bordered class="q-mb-md">
             <q-card-section>
+              <div class="row items-center q-mb-xs q-gutter-xs">
+                <q-badge v-if="current.source === 'fixer'" color="teal-7" label="AI + மனித திருத்தம்" class="tamil" style="font-size:0.7em" />
+              </div>
               <div v-if="current.prompt" class="tamil text-grey-8 q-mb-sm" style="font-weight:600;font-size:0.95em">{{ current.prompt }}</div>
               <div class="tamil" style="white-space:pre-line;font-size:1.2em;line-height:2">{{ current.verse }}</div>
               <div class="row items-center justify-between q-mt-sm">

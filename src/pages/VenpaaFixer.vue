@@ -246,6 +246,11 @@
             <q-btn dense flat icon="image" label="படம்" color="grey-7" class="tamil" size="sm" @click="downloadImage(composedVerse)" />
             <q-btn dense flat icon="share" label="பகிர்" color="grey-7" class="tamil" size="sm" @click="shareInstagram(composedVerse)" />
           </div>
+          <div v-if="logId" class="q-mt-xs">
+            <q-checkbox v-model="compositionIsPublic" dense size="xs" color="grey-5" class="text-grey-5" style="opacity:0.7">
+              <span class="tamil" style="font-size:0.714em">பொது தொகுப்பில் சேர்க்க</span>
+            </q-checkbox>
+          </div>
         </div>
       </q-step>
 
@@ -504,6 +509,8 @@ export default {
     }
     if (this.$route.query.log_id) {
       this.logId = parseInt(this.$route.query.log_id)
+      this.compositionLogId = this.logId
+      this.compositionIsPublic = true
     }
   },
   watch: {
@@ -529,6 +536,8 @@ export default {
   data () {
     return {
       compositionSource: 'fixer',
+      compositionIsPublic: false,
+      compositionLogId: null,
       logId: null,
       step: 1,
       saving: false,

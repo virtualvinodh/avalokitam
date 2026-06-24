@@ -83,7 +83,7 @@ function getRandomPublicComposition () {
     SELECT c.*, g.sandhi, g.literal, g.explanation
     FROM compositions c
     LEFT JOIN generation_log g ON c.log_id = g.id
-    WHERE c.is_public = 1 AND c.source = 'ai'
+    WHERE c.is_public = 1 AND (c.source = 'ai' OR (c.source = 'fixer' AND c.log_id IS NOT NULL))
     ORDER BY RANDOM() LIMIT 1
   `).get() || null
 }
@@ -94,10 +94,10 @@ function getPublicCompositions (page, limit) {
     SELECT c.*, g.sandhi, g.literal, g.explanation
     FROM compositions c
     LEFT JOIN generation_log g ON c.log_id = g.id
-    WHERE c.is_public = 1 AND c.source = 'ai'
+    WHERE c.is_public = 1 AND (c.source = 'ai' OR (c.source = 'fixer' AND c.log_id IS NOT NULL))
     ORDER BY c.created_at DESC LIMIT ? OFFSET ?
   `).all(limit, offset)
-  const { total } = db.prepare(`SELECT COUNT(*) as total FROM compositions WHERE is_public = 1 AND source = 'ai'`).get()
+  const { total } = db.prepare(`SELECT COUNT(*) as total FROM compositions WHERE is_public = 1 AND (source = 'ai' OR (source = 'fixer' AND log_id IS NOT NULL))`).get()
   return { rows, total }
 }
 

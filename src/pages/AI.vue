@@ -116,6 +116,7 @@
             </template>
           </q-btn>
           <div class="text-caption text-grey-5 text-center tamil q-mt-xs">உங்கள் உரைக்கோளும் பாவும் மேம்பாட்டிற்காக பதிவு செய்யப்படும்.</div>
+          <div class="text-caption text-grey-5 text-center tamil q-mt-xs">சேமிக்கப்படும் பாக்கள் AI காட்சியகத்தில் வெளியிடப்படும் (விரும்பாவிட்டால் விலக்கிக்கொள்ளலாம்).</div>
 
           <!-- Token stats (visible only with ?dev=1) -->
           <q-expansion-item
@@ -227,14 +228,16 @@
                 <!-- 1. Final verse on dark background + action buttons -->
                 <div class="rounded-borders q-mb-sm" style="background:#1a1a1a">
                   <div class="tamil q-pa-md text-white" style="white-space:pre-line; font-size:1.15em; line-height:1.9">{{ finalVerse }}</div>
-                  <div class="row items-center q-px-sm q-pb-sm">
+                  <div class="row items-center q-px-sm q-pt-xs">
                     <q-btn flat dense dark icon="file_copy" label="நகலெடு" class="tamil text-grey-4" size="sm" @click="copyVerse" />
                     <q-btn flat dense dark icon="bookmark" label="சேமி" class="tamil text-grey-4" size="sm" :loading="saving" @click="saveAndCopy(finalVerse)" />
                     <q-btn flat dense dark icon="image" label="படம்" class="tamil text-grey-4" size="sm" @click="downloadImage(finalVerse)" />
                     <q-btn flat dense dark icon="share" label="பகிர்" class="tamil text-grey-4" size="sm" @click="shareInstagram(finalVerse)" />
                     <q-btn flat dense dark icon="find_in_page" label="ஆராய்க" class="tamil text-grey-4" size="sm" @click="openInAnalyzer" />
                     <q-btn flat dense dark icon="refresh" label="மீண்டும்" class="tamil text-grey-4" size="sm" @click="run" />
-                    <q-checkbox v-model="compositionIsPublic" dark dense size="xs" color="grey-5" class="text-grey-5 q-ml-xs" style="opacity:0.7">
+                  </div>
+                  <div class="q-px-sm q-pb-sm">
+                    <q-checkbox v-model="compositionIsPublic" dark dense size="xs" color="grey-5" class="text-grey-5" style="opacity:0.7">
                       <span class="tamil" style="font-size:0.714em">பொது தொகுப்பில் சேர்க்க</span>
                     </q-checkbox>
                   </div>
