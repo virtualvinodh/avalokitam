@@ -111,16 +111,34 @@ export default {
         { name: 'generations', label: 'உருவாக்கம்', field: 'generations', align: 'right', style: 'width:90px' },
         { name: 'fixes', label: 'திருத்தம்', field: 'fixes', align: 'right', style: 'width:80px' },
         { name: 'ai_failures', label: 'தோல்வி', field: 'ai_failures', align: 'right', style: 'width:70px' },
-        { name: 'avg_attempts', label: 'சராசரி முயற்சி', field: row => {
-          const total = row.generations + row.fixes
-          return total ? (row.total_attempts / total).toFixed(1) : '—'
-        }, align: 'right', style: 'width:110px' },
-        { name: 'first_try_pct', label: 'முதல் முயற்சி %', field: row => {
-          const total = row.generations + row.fixes
-          return total ? Math.round(row.first_try_successes / total * 100) + '%' : '—'
-        }, align: 'right', style: 'width:110px' },
+        {
+          name: 'avg_attempts',
+          label: 'சராசரி முயற்சி',
+          field: row => {
+            const total = row.generations + row.fixes
+            return total ? (row.total_attempts / total).toFixed(1) : '—'
+          },
+          align: 'right',
+          style: 'width:110px'
+        },
+        {
+          name: 'first_try_pct',
+          label: 'முதல் முயற்சி %',
+          field: row => {
+            const total = row.generations + row.fixes
+            return total ? Math.round(row.first_try_successes / total * 100) + '%' : '—'
+          },
+          align: 'right',
+          style: 'width:110px'
+        },
         { name: 'fix_clicks', label: 'திருத்து அழுத்தம்', field: 'fix_clicks', align: 'right', style: 'width:110px' },
-        { name: 'cost', label: 'செலவு', field: row => row.cost.toFixed(4), align: 'right', style: 'width:80px' }
+        {
+          name: 'cost',
+          label: 'செலவு',
+          field: row => row.cost.toFixed(4),
+          align: 'right',
+          style: 'width:80px'
+        }
       ]
     }
   },
