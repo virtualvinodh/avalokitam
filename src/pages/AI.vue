@@ -303,16 +303,13 @@
               <template v-slot:avatar>
                 <q-icon name="info" size="28px" />
               </template>
-              <div class="text-caption q-mb-xs">சிறந்த முயற்சி — சில பிழைகள் இருக்கலாம்</div>
+              <div class="text-caption q-mb-xs">சிறந்த முயற்சி — சில பிழைகள் உள்ளன</div>
               <div class="tamil" style="white-space:pre-line; font-size:1.15em; line-height:1.9">{{ finalVerse }}</div>
               <template v-slot:action>
                 <q-btn flat dense icon="file_copy" label="நகலெடு" class="tamil" @click="copyVerse" />
-                <q-btn flat dense icon="bookmark" label="சேமி" class="tamil" :loading="saving" @click="saveAndCopy(finalVerse)" />
-                <q-btn flat dense icon="image" label="படம்" class="tamil" @click="downloadImage(finalVerse)" />
-                <q-btn flat dense icon="share" label="பகிர்" class="tamil" @click="shareInstagram(finalVerse)" />
                 <q-btn flat dense icon="build" label="சுயமாக திருத்துக" class="tamil" @click="openInFixer" />
+                <q-btn flat dense icon="find_in_page" label="ஆராய்க" class="tamil" @click="$router.push({ path: '/analyzer', query: { text: finalVerse } })" />
                 <q-btn flat dense icon="refresh" label="மீண்டும்" class="tamil" @click="run" />
-                <q-checkbox v-model="compositionIsPublic" dense size="xs" color="grey-5" label="பொது தொகுப்பில் சேர்க்க" class="tamil text-grey-5" style="font-size:0.75em;opacity:0.7" />
               </template>
             </q-banner>
 

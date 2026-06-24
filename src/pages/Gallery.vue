@@ -3,6 +3,8 @@
     <div class="row justify-center">
       <div class="col-xs-12 col-sm-10 col-md-7 col-lg-5">
 
+        <div class="text-h6 tamil q-mb-md" style="color:#555">AI காட்சியகம்</div>
+
         <div v-if="loading" class="flex flex-center q-mt-xl">
           <q-spinner-oval color="grey-6" size="3em" />
         </div>
@@ -20,12 +22,21 @@
 
           <!-- Verse card -->
           <q-card flat bordered class="q-mb-md">
-            <q-card-section class="cursor-pointer" @click.native="$router.push('/poem/' + current.id)">
-              <div v-if="current.prompt" class="text-caption text-grey-5 tamil q-mb-sm">{{ current.prompt }}</div>
+            <q-card-section>
+              <div v-if="current.prompt" class="tamil text-grey-8 q-mb-sm" style="font-weight:600;font-size:0.95em">{{ current.prompt }}</div>
               <div class="tamil" style="white-space:pre-line;font-size:1.2em;line-height:2">{{ current.verse }}</div>
               <div class="row items-center justify-between q-mt-sm">
                 <span class="text-caption text-grey-5 tamil">{{ current.metre }}</span>
                 <span class="text-caption text-grey-5">{{ formatDate(current.created_at) }}</span>
+              </div>
+            </q-card-section>
+
+            <q-card-section class="q-pt-xs">
+              <div class="row q-gutter-xs items-center">
+                <q-btn dense flat icon="link" label="இணைப்பு" color="grey-7" class="tamil" size="sm" @click="shareLink" />
+                <q-btn dense flat icon="image" label="படம்" color="grey-7" class="tamil" size="sm" @click="downloadImage(current.verse)" />
+                <q-btn dense flat icon="share" label="பகிர்" color="grey-7" class="tamil" size="sm" @click="shareInstagram(current.verse)" />
+                <q-btn dense flat icon="find_in_page" label="ஆராய்க" color="grey-7" class="tamil" size="sm" @click="$router.push({ path: '/analyzer', query: { text: current.verse } })" />
               </div>
             </q-card-section>
 
@@ -59,22 +70,47 @@
 </template>
 
 <script>
+import { LinkMixin } from '../mixin/LinkMixin'
+import { ShareMixin } from '../mixin/ShareMixin'
+
 const AI_BACKEND = process.env.AI_BACKEND || ''
 
 export default {
   name: 'GalleryPage',
+  mixins: [LinkMixin, ShareMixin],
   data () {
     return {
+      compositionSource: 'gallery',
       loading: false,
       current: null,
       index: 0,
       total: 0
     }
   },
-  mounted () {
-    this.go(0)
+  async mounted () {
+    const id = this.$route.query.id
+    if (id) {
+      await this.goById(id)
+    } else {
+      await this.go(0)
+    }
   },
   methods: {
+    updateUrl () {
+      if (this.current) {
+        this.$router.replace({ query: { id: this.current.id } }).catch(() => {})
+      }
+    },
+    shareLink () {
+      const url = window.location.origin + '/poem/' + this.current.id
+      const notify = () => this.$q.notify({ message: 'இணைப்பு நகலெடுக்கப்பட்டது!', color: 'grey-8', position: 'top', timeout: 2000 })
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(notify).catch(() => { this._fallbackCopy(url); notify() })
+      } else {
+        this._fallbackCopy(url)
+        notify()
+      }
+    },
     async go (idx) {
       this.loading = true
       try {
@@ -84,6 +120,26 @@ export default {
           this.current = data.compositions[0]
           this.index = idx
           this.total = data.total
+          this.updateUrl()
+        }
+      } finally {
+        this.loading = false
+      }
+    },
+    async goById (id) {
+      this.loading = true
+      try {
+        const [compResp, totalResp] = await Promise.all([
+          fetch(`${AI_BACKEND}/compositions/${id}`),
+          fetch(`${AI_BACKEND}/compositions/public?page=1&limit=1`)
+        ])
+        if (compResp.ok) {
+          this.current = await compResp.json()
+          const totalData = await totalResp.json()
+          this.total = totalData.total
+          this.index = 0
+        } else {
+          await this.go(0)
         }
       } finally {
         this.loading = false
@@ -96,6 +152,7 @@ export default {
         const data = await resp.json()
         this.current = data
         this.index = Math.floor(Math.random() * this.total)
+        this.updateUrl()
       } finally {
         this.loading = false
       }
