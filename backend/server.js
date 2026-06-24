@@ -3,7 +3,7 @@ const express = require('express')
 const cors = require('cors')
 const { runLoop, callParser, parseXML } = require('./geminiLoop')
 const { getSuggestions, getRunSuggestions } = require('./errorFeedback')
-const { saveComposition, getComposition, listCompositions, recordDailyStat, incrementFixClick, getDailyStats } = require('./db')
+const { saveComposition, getComposition, listCompositions, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals } = require('./db')
 
 const app = express()
 app.use(cors())
@@ -88,7 +88,7 @@ app.get('/admin/stats', (req, res) => {
   if (!process.env.DEV_TOKEN || token !== process.env.DEV_TOKEN) {
     return res.status(401).json({ error: 'unauthorized' })
   }
-  res.json({ stats: getDailyStats(60) })
+  res.json({ stats: getDailyStats(60), totals: getStatsTotals() })
 })
 
 app.get('/admin/compositions', (req, res) => {

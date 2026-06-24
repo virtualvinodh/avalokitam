@@ -53,6 +53,36 @@
 
       <!-- Stats tab -->
       <div v-if="tab === 'stats'">
+        <div v-if="totals" class="row q-gutter-sm q-mb-md">
+          <q-card flat bordered class="col-auto q-pa-sm text-center" style="min-width:90px">
+            <div class="text-h6">{{ totals.generations }}</div>
+            <div class="text-caption text-grey-6 tamil">உருவாக்கம்</div>
+          </q-card>
+          <q-card flat bordered class="col-auto q-pa-sm text-center" style="min-width:90px">
+            <div class="text-h6">{{ totals.fixes }}</div>
+            <div class="text-caption text-grey-6 tamil">திருத்தம்</div>
+          </q-card>
+          <q-card flat bordered class="col-auto q-pa-sm text-center" style="min-width:90px">
+            <div class="text-h6">{{ totals.ai_failures }}</div>
+            <div class="text-caption text-grey-6 tamil">தோல்வி</div>
+          </q-card>
+          <q-card flat bordered class="col-auto q-pa-sm text-center" style="min-width:110px">
+            <div class="text-h6">{{ avgAttemptsTotal }}</div>
+            <div class="text-caption text-grey-6 tamil">சராசரி முயற்சி</div>
+          </q-card>
+          <q-card flat bordered class="col-auto q-pa-sm text-center" style="min-width:110px">
+            <div class="text-h6">{{ firstTryPctTotal }}</div>
+            <div class="text-caption text-grey-6 tamil">முதல் முயற்சி %</div>
+          </q-card>
+          <q-card flat bordered class="col-auto q-pa-sm text-center" style="min-width:90px">
+            <div class="text-h6">{{ totals.fix_clicks }}</div>
+            <div class="text-caption text-grey-6 tamil">திருத்து அழுத்தம்</div>
+          </q-card>
+          <q-card flat bordered class="col-auto q-pa-sm text-center" style="min-width:90px">
+            <div class="text-h6">${{ totals.cost ? totals.cost.toFixed(2) : '0.00' }}</div>
+            <div class="text-caption text-grey-6 tamil">மொத்த செலவு</div>
+          </q-card>
+        </div>
         <div class="row items-center q-mb-sm">
           <div class="text-subtitle1">கடந்த 60 நாட்கள்</div>
         </div>
@@ -106,6 +136,7 @@ export default {
 
       loadingStats: false,
       dailyStats: [],
+      totals: null,
       statCols: [
         { name: 'date', label: 'தேதி', field: 'date', align: 'left', style: 'width:110px' },
         { name: 'generations', label: 'உருவாக்கம்', field: 'generations', align: 'right', style: 'width:90px' },
@@ -140,6 +171,18 @@ export default {
           style: 'width:80px'
         }
       ]
+    }
+  },
+  computed: {
+    avgAttemptsTotal () {
+      if (!this.totals) return '—'
+      const total = (this.totals.generations || 0) + (this.totals.fixes || 0)
+      return total ? (this.totals.total_attempts / total).toFixed(1) : '—'
+    },
+    firstTryPctTotal () {
+      if (!this.totals) return '—'
+      const total = (this.totals.generations || 0) + (this.totals.fixes || 0)
+      return total ? Math.round(this.totals.first_try_successes / total * 100) + '%' : '—'
     }
   },
   watch: {
@@ -177,6 +220,7 @@ export default {
         if (resp.status === 401) { this.authed = false; return }
         const data = await resp.json()
         this.dailyStats = data.stats
+        this.totals = data.totals
       } finally {
         this.loadingStats = false
       }

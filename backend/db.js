@@ -98,4 +98,21 @@ function getDailyStats (limit = 30) {
   return db.prepare('SELECT * FROM daily_stats ORDER BY date DESC LIMIT ?').all(limit)
 }
 
-module.exports = { saveComposition, getComposition, listCompositions, recordDailyStat, incrementFixClick, getDailyStats }
+function getStatsTotals () {
+  return db.prepare(`
+    SELECT
+      SUM(generations)         AS generations,
+      SUM(fixes)               AS fixes,
+      SUM(ai_failures)         AS ai_failures,
+      SUM(total_attempts)      AS total_attempts,
+      SUM(first_try_successes) AS first_try_successes,
+      SUM(fix_clicks)          AS fix_clicks,
+      SUM(input_tokens)        AS input_tokens,
+      SUM(output_tokens)       AS output_tokens,
+      SUM(thinking_tokens)     AS thinking_tokens,
+      SUM(cost)                AS cost
+    FROM daily_stats
+  `).get()
+}
+
+module.exports = { saveComposition, getComposition, listCompositions, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals }
