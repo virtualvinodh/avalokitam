@@ -227,16 +227,16 @@
                 <!-- 1. Final verse on dark background + action buttons -->
                 <div class="rounded-borders q-mb-sm" style="background:#1a1a1a">
                   <div class="tamil q-pa-md text-white" style="white-space:pre-line; font-size:1.15em; line-height:1.9">{{ finalVerse }}</div>
-                  <div class="row q-px-sm q-pb-sm">
+                  <div class="row items-center q-px-sm q-pb-sm">
                     <q-btn flat dense dark icon="file_copy" label="நகலெடு" class="tamil text-grey-4" size="sm" @click="copyVerse" />
                     <q-btn flat dense dark icon="bookmark" label="சேமி" class="tamil text-grey-4" size="sm" :loading="saving" @click="saveAndCopy(finalVerse)" />
                     <q-btn flat dense dark icon="image" label="படம்" class="tamil text-grey-4" size="sm" @click="downloadImage(finalVerse)" />
                     <q-btn flat dense dark icon="share" label="பகிர்" class="tamil text-grey-4" size="sm" @click="shareInstagram(finalVerse)" />
                     <q-btn flat dense dark icon="find_in_page" label="ஆராய்க" class="tamil text-grey-4" size="sm" @click="openInAnalyzer" />
                     <q-btn flat dense dark icon="refresh" label="மீண்டும்" class="tamil text-grey-4" size="sm" @click="run" />
-                  </div>
-                  <div class="q-px-sm q-pb-sm">
-                    <q-checkbox v-model="compositionIsPublic" dark dense size="xs" color="grey-5" label="பொது தொகுப்பில் சேர்க்க" class="tamil text-grey-5" style="font-size:0.75em;opacity:0.7" />
+                    <q-checkbox v-model="compositionIsPublic" dark dense size="xs" color="grey-5" class="text-grey-5 q-ml-xs" style="opacity:0.7">
+                      <span class="tamil" style="font-size:0.714em">பொது தொகுப்பில் சேர்க்க</span>
+                    </q-checkbox>
                   </div>
                 </div>
                 <!-- 2. Sandhi split -->
