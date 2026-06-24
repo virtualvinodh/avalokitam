@@ -22,6 +22,21 @@
             <div class="text-grey-6 tamil q-mt-xs" style="font-size:0.9em" v-if="metre">{{ metre }}</div>
           </q-card>
 
+          <div v-if="sandhi || literal || explanation" class="q-mt-md q-pa-md bg-grey-1 rounded-borders">
+            <div v-if="sandhi" class="q-mb-sm">
+              <div class="text-caption text-grey-5 tamil q-mb-xs">சந்திபிரித்த செய்யுள்</div>
+              <div class="tamil text-grey-7" style="white-space:pre-line;line-height:1.8">{{ sandhi }}</div>
+            </div>
+            <div v-if="literal" class="q-mb-sm">
+              <div class="text-caption text-grey-5 tamil q-mb-xs">தெளிவுரை</div>
+              <div class="tamil text-grey-7" style="line-height:1.7">{{ literal }}</div>
+            </div>
+            <div v-if="explanation">
+              <div class="text-caption text-grey-5 tamil q-mb-xs">பொழிப்புரை</div>
+              <div class="tamil text-grey-7" style="line-height:1.7">{{ explanation }}</div>
+            </div>
+          </div>
+
           <div class="row justify-center q-gutter-xs q-mt-md items-center">
             <q-btn dense flat icon="link" label="இணைப்பு" color="grey-7" class="tamil" size="sm" @click="shareLink(verse)" />
             <q-btn dense flat icon="image" label="படம்" color="grey-7" class="tamil" size="sm" @click="downloadImage(verse)" />
@@ -85,6 +100,9 @@ export default {
       verse: '',
       metre: '',
       createdAt: null,
+      sandhi: null,
+      literal: null,
+      explanation: null,
       result: null,
       view: 'all',
       updateKey: 0
@@ -105,6 +123,9 @@ export default {
       this.verse = comp.verse
       this.metre = comp.metre
       this.createdAt = comp.created_at
+      this.sandhi = comp.sandhi || null
+      this.literal = comp.literal || null
+      this.explanation = comp.explanation || null
       this.loading = false
       // Run analysis
       const xml = await this.convertAsync(comp.verse)

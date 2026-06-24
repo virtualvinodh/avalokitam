@@ -36,6 +36,11 @@
           :pagination="{rowsPerPage: 0}"
           hide-pagination
         >
+          <template v-slot:body-cell-is_public="props">
+            <q-td :props="props">
+              <q-checkbox dense :value="!!props.row.is_public" @input="togglePublic(props.row, $event)" />
+            </q-td>
+          </template>
           <template v-slot:body-cell-verse="props">
             <q-td :props="props">
               <div class="tamil" style="white-space:pre-line;font-size:0.85em;line-height:1.6">{{ props.value }}</div>
@@ -74,7 +79,8 @@
               <q-td colspan="100%" class="q-pa-md bg-grey-1">
                 <div class="q-mb-xs text-caption text-grey-6">{{ props.row.model }} · {{ props.row.thinking_level }}<span v-if="props.row.input_error_count != null"> · உள்ளீட்டு பிழைகள்: {{ props.row.input_error_count }}</span></div>
                 <div class="q-mb-xs"><strong>உரைக்கோள்:</strong> <span class="tamil">{{ props.row.prompt }}</span></div>
-                <div v-if="props.row.final_verse" class="q-mb-xs"><strong>இறுதிப்பா:</strong><span v-if="props.row.final_metre" class="text-caption text-grey-5 q-ml-sm">{{ props.row.final_metre }}</span><div class="tamil" style="white-space:pre-line">{{ props.row.final_verse }}</div></div>
+                <div v-if="props.row.final_metre" class="q-mb-xs text-caption text-grey-8 tamil"><strong>{{ props.row.final_metre }}</strong></div>
+                <div v-if="props.row.final_verse" class="q-mb-sm tamil" style="white-space:pre-line;font-size:1.05em;line-height:1.9;border-left:3px solid #ddd;padding-left:8px">{{ props.row.final_verse }}</div>
                 <div v-if="props.row.sandhi" class="q-mb-xs"><strong>சந்தி:</strong> <span class="tamil">{{ props.row.sandhi }}</span></div>
                 <div v-if="props.row.literal" class="q-mb-xs"><strong>தெளிவுரை:</strong> <span class="tamil">{{ props.row.literal }}</span></div>
                 <div v-if="props.row.explanation" class="q-mb-xs"><strong>பொழிப்புரை:</strong> <span class="tamil">{{ props.row.explanation }}</span></div>
@@ -174,6 +180,7 @@ export default {
       versePage: 1,
       versePages: 1,
       verseCols: [
+        { name: 'is_public', label: 'பொது', field: 'is_public', align: 'center', style: 'width:60px' },
         { name: 'id', label: 'இணைப்பு', field: 'id', align: 'left', style: 'width:80px' },
         { name: 'source', label: 'மூலம்', field: 'source', align: 'left', style: 'width:90px' },
         { name: 'metre', label: 'யாப்பு', field: 'metre', align: 'left', style: 'width:140px' },
@@ -269,6 +276,14 @@ export default {
       this.token = this.tokenInput
       this.authed = true
       this.fetchVerses()
+    },
+    async togglePublic (row, val) {
+      row.is_public = val ? 1 : 0
+      await fetch(`${AI_BACKEND}/compositions/${row.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'x-dev-token': this.token },
+        body: JSON.stringify({ is_public: !!val })
+      })
     },
     async fetchVerses () {
       this.loadingVerses = true

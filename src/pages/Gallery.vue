@@ -3,11 +3,6 @@
     <div class="row justify-center">
       <div class="col-xs-12 col-sm-10 col-md-7 col-lg-5">
 
-        <q-tabs dense align="left" active-color="grey-9" indicator-color="grey-9" class="q-mb-md">
-          <q-tab name="create" label="இயற்றுக" @click="$router.push('/ai')" class="text-grey-6" />
-          <q-tab name="gallery" label="தொகுப்பு" @click="$router.push('/gallery')" :class="{ 'text-grey-9': true }" />
-        </q-tabs>
-
         <div v-if="loading" class="flex flex-center q-mt-xl">
           <q-spinner-oval color="grey-6" size="3em" />
         </div>

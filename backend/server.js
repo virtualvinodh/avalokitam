@@ -3,7 +3,7 @@ const express = require('express')
 const cors = require('cors')
 const { runLoop, callParser, parseXML } = require('./geminiLoop')
 const { getSuggestions, getRunSuggestions } = require('./errorFeedback')
-const { saveComposition, getComposition, getPublicCompositions, getRandomPublicComposition, getSourceCounts, listCompositions, saveGenerationLog, updateManualFix, listGenerationLog, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals } = require('./db')
+const { saveComposition, getComposition, getPublicCompositions, getRandomPublicComposition, getSourceCounts, setCompositionPublic, listCompositions, saveGenerationLog, updateManualFix, listGenerationLog, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals } = require('./db')
 
 const app = express()
 app.use(cors())
@@ -75,6 +75,17 @@ app.post('/venpa/suggest', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
+})
+
+app.patch('/compositions/:id', (req, res) => {
+  const token = req.headers['x-dev-token'] || req.query.token
+  if (!process.env.DEV_TOKEN || token !== process.env.DEV_TOKEN) {
+    return res.status(401).json({ error: 'unauthorized' })
+  }
+  const { is_public } = req.body
+  if (typeof is_public !== 'boolean') return res.status(400).json({ error: 'is_public required' })
+  setCompositionPublic(req.params.id, is_public)
+  res.json({ ok: true })
 })
 
 app.patch('/generation-log/:id', (req, res) => {

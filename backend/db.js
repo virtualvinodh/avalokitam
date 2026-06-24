@@ -102,7 +102,12 @@ function getPublicCompositions (page, limit) {
 }
 
 function getComposition (id) {
-  return db.prepare('SELECT * FROM compositions WHERE id = ?').get(id) || null
+  return db.prepare(`
+    SELECT c.*, g.sandhi, g.literal, g.explanation
+    FROM compositions c
+    LEFT JOIN generation_log g ON c.log_id = g.id
+    WHERE c.id = ?
+  `).get(id) || null
 }
 
 function saveGenerationLog ({ mode, verseType, prompt, attempts, success, finalVerse, iterationsJson, sandhi, literal, explanation, cost, model, thinkingLevel, finalMetre, inputErrorCount }) {
@@ -115,6 +120,10 @@ function saveGenerationLog ({ mode, verseType, prompt, attempts, success, finalV
 
 function updateManualFix (id, verse) {
   db.prepare('UPDATE generation_log SET manually_fixed_verse = ? WHERE id = ?').run(verse, id)
+}
+
+function setCompositionPublic (id, isPublic) {
+  db.prepare('UPDATE compositions SET is_public = ? WHERE id = ?').run(isPublic ? 1 : 0, id)
 }
 
 function listGenerationLog (page, limit) {
@@ -200,4 +209,4 @@ function getStatsTotals () {
   `).get()
 }
 
-module.exports = { saveComposition, getComposition, getPublicCompositions, getRandomPublicComposition, getSourceCounts, listCompositions, saveGenerationLog, updateManualFix, listGenerationLog, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals }
+module.exports = { saveComposition, getComposition, getPublicCompositions, getRandomPublicComposition, getSourceCounts, setCompositionPublic, listCompositions, saveGenerationLog, updateManualFix, listGenerationLog, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals }
