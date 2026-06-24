@@ -502,6 +502,9 @@ export default {
       this.text = this.$route.query.verse
       await this.goToStep2()
     }
+    if (this.$route.query.log_id) {
+      this.logId = parseInt(this.$route.query.log_id)
+    }
   },
   watch: {
     composeType (val) {
@@ -526,6 +529,7 @@ export default {
   data () {
     return {
       compositionSource: 'fixer',
+      logId: null,
       step: 1,
       saving: false,
       inputMode: 'fix',
@@ -685,6 +689,14 @@ export default {
     }
   },
   methods: {
+    afterSave (verse) {
+      if (!this.logId) return
+      fetch(AI_BACKEND + '/generation-log/' + this.logId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ manuallyFixedVerse: verse })
+      }).catch(() => {})
+    },
     wordAt (li, fi) {
       return (this.editableWords[li] && this.editableWords[li][fi]) || ''
     },

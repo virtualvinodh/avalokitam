@@ -16,6 +16,7 @@
       <q-tabs v-model="tab" dense align="left" class="q-mb-md" active-color="grey-9" indicator-color="grey-9">
         <q-tab name="verses" label="பாக்கள்" />
         <q-tab name="stats" label="புள்ளிவிவரம்" />
+        <q-tab name="log" label="பதிவு" />
       </q-tabs>
 
       <!-- Verses tab -->
@@ -51,6 +52,45 @@
         </q-table>
         <div class="flex flex-center q-mt-md">
           <q-pagination v-model="versePage" :max="versePages" :max-pages="7" boundary-links @input="fetchVerses" color="grey-8" />
+        </div>
+      </div>
+
+      <!-- Log tab -->
+      <div v-if="tab === 'log'">
+        <q-table
+          :data="logs"
+          :columns="logCols"
+          :loading="loadingLog"
+          row-key="id"
+          flat bordered dense
+          :pagination="{rowsPerPage: 0}"
+          hide-pagination
+        >
+          <template v-slot:body="props">
+            <q-tr :props="props" class="cursor-pointer" @click.native="props.expand = !props.expand">
+              <q-td v-for="col in props.cols" :key="col.name" :props="props">{{ col.value }}</q-td>
+            </q-tr>
+            <q-tr v-show="props.expand" :props="props">
+              <q-td colspan="100%" class="q-pa-md bg-grey-1">
+                <div class="q-mb-xs"><strong>உரைக்கோள்:</strong> <span class="tamil">{{ props.row.prompt }}</span></div>
+                <div v-if="props.row.final_verse" class="q-mb-xs"><strong>இறுதிப்பா:</strong><div class="tamil" style="white-space:pre-line">{{ props.row.final_verse }}</div></div>
+                <div v-if="props.row.sandhi" class="q-mb-xs"><strong>சந்தி:</strong> <span class="tamil">{{ props.row.sandhi }}</span></div>
+                <div v-if="props.row.literal" class="q-mb-xs"><strong>தெளிவுரை:</strong> <span class="tamil">{{ props.row.literal }}</span></div>
+                <div v-if="props.row.explanation" class="q-mb-xs"><strong>பொழிப்புரை:</strong> <span class="tamil">{{ props.row.explanation }}</span></div>
+                <div v-if="props.row.manually_fixed_verse" class="q-mb-xs text-positive"><strong>கைத்திருத்தம்:</strong><div class="tamil" style="white-space:pre-line">{{ props.row.manually_fixed_verse }}</div></div>
+                <div v-if="props.row.iterations_json" class="q-mt-sm">
+                  <strong>முயற்சிகள்:</strong>
+                  <div v-for="(iter, i) in parseIterations(props.row.iterations_json)" :key="i" class="q-mt-xs q-pl-sm" style="border-left:2px solid #ccc">
+                    <div class="text-caption text-grey-6">{{ i + 1 }}. {{ iter.errors && iter.errors.length ? '✗ ' + iter.errors.map(e => e.rule).join(', ') : '✓' }}</div>
+                    <div class="tamil" style="white-space:pre-line;font-size:0.8em">{{ iter.verse }}</div>
+                  </div>
+                </div>
+              </q-td>
+            </q-tr>
+          </template>
+        </q-table>
+        <div class="flex flex-center q-mt-md">
+          <q-pagination v-model="logPage" :max="logPages" :max-pages="7" boundary-links @input="fetchLog" color="grey-8" />
         </div>
       </div>
 
@@ -139,6 +179,21 @@ export default {
         { name: 'created_at', label: 'தேதி', field: 'created_at', align: 'left', style: 'width:160px' }
       ],
 
+      loadingLog: false,
+      logs: [],
+      logPage: 1,
+      logPages: 1,
+      logCols: [
+        { name: 'created_at', label: 'தேதி', field: row => new Date(row.created_at).toLocaleString('ta-IN'), align: 'left', style: 'width:140px' },
+        { name: 'mode', label: 'வகை', field: 'mode', align: 'left', style: 'width:80px' },
+        { name: 'verse_type', label: 'பா', field: 'verse_type', align: 'left', style: 'width:80px' },
+        { name: 'prompt', label: 'உரைக்கோள்', field: row => (row.prompt || '').slice(0, 40) + ((row.prompt || '').length > 40 ? '…' : ''), align: 'left' },
+        { name: 'attempts', label: 'முயற்சி', field: 'attempts', align: 'right', style: 'width:70px' },
+        { name: 'success', label: 'நிலை', field: row => row.success ? '✓' : '✗', align: 'center', style: 'width:60px' },
+        { name: 'manually_fixed', label: 'திருத்தம்', field: row => row.manually_fixed_verse ? '✓' : '', align: 'center', style: 'width:70px' },
+        { name: 'cost', label: 'செலவு', field: row => '$' + (row.cost || 0).toFixed(4), align: 'right', style: 'width:80px' }
+      ],
+
       loadingStats: false,
       dailyStats: [],
       totals: null,
@@ -207,6 +262,7 @@ export default {
   watch: {
     tab (val) {
       if (val === 'stats' && !this.dailyStats.length) this.fetchStats()
+      if (val === 'log' && !this.logs.length) this.fetchLog()
     }
   },
   methods: {
@@ -230,6 +286,23 @@ export default {
       } finally {
         this.loadingVerses = false
       }
+    },
+    async fetchLog () {
+      this.loadingLog = true
+      try {
+        const resp = await fetch(`${AI_BACKEND}/admin/generation-log?page=${this.logPage}&limit=20`, {
+          headers: { 'x-dev-token': this.token }
+        })
+        if (resp.status === 401) { this.authed = false; return }
+        const data = await resp.json()
+        this.logs = data.logs
+        this.logPages = data.pages
+      } finally {
+        this.loadingLog = false
+      }
+    },
+    parseIterations (json) {
+      try { return JSON.parse(json) } catch (_) { return [] }
     },
     async fetchStats () {
       this.loadingStats = true

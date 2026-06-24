@@ -16,6 +16,25 @@ db.exec(`
 try { db.exec('ALTER TABLE compositions ADD COLUMN source TEXT') } catch (_) {}
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS generation_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at INTEGER NOT NULL,
+    mode TEXT,
+    verse_type TEXT,
+    prompt TEXT,
+    attempts INTEGER,
+    success INTEGER,
+    final_verse TEXT,
+    iterations_json TEXT,
+    sandhi TEXT,
+    literal TEXT,
+    explanation TEXT,
+    cost REAL,
+    manually_fixed_verse TEXT
+  )
+`)
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS daily_stats (
     date TEXT PRIMARY KEY,
     generations INTEGER DEFAULT 0,
@@ -47,6 +66,25 @@ function saveComposition (verse, metre, source) {
 
 function getComposition (id) {
   return db.prepare('SELECT * FROM compositions WHERE id = ?').get(id) || null
+}
+
+function saveGenerationLog ({ mode, verseType, prompt, attempts, success, finalVerse, iterationsJson, sandhi, literal, explanation, cost }) {
+  const result = db.prepare(`
+    INSERT INTO generation_log (created_at, mode, verse_type, prompt, attempts, success, final_verse, iterations_json, sandhi, literal, explanation, cost)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(Date.now(), mode, verseType, prompt, attempts, success ? 1 : 0, finalVerse, iterationsJson, sandhi || null, literal || null, explanation || null, cost || 0)
+  return result.lastInsertRowid
+}
+
+function updateManualFix (id, verse) {
+  db.prepare('UPDATE generation_log SET manually_fixed_verse = ? WHERE id = ?').run(verse, id)
+}
+
+function listGenerationLog (page, limit) {
+  const offset = (page - 1) * limit
+  const rows = db.prepare('SELECT * FROM generation_log ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit, offset)
+  const { total } = db.prepare('SELECT COUNT(*) as total FROM generation_log').get()
+  return { rows, total }
 }
 
 function getSourceCounts () {
@@ -125,4 +163,4 @@ function getStatsTotals () {
   `).get()
 }
 
-module.exports = { saveComposition, getComposition, getSourceCounts, listCompositions, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals }
+module.exports = { saveComposition, getComposition, getSourceCounts, listCompositions, saveGenerationLog, updateManualFix, listGenerationLog, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals }

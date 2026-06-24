@@ -377,6 +377,7 @@ export default {
   data () {
     return {
       compositionSource: 'ai',
+      logId: null,
       mode: 'generate',
       verseType: 'venpaa',
       topic: '',
@@ -533,6 +534,8 @@ export default {
             } else if (event.type === 'explanation') {
               this.explanation = event.text
               this.loadingExtra = false
+            } else if (event.type === 'log_id') {
+              this.logId = event.id
             } else if (event.type === 'usage') {
               this.remaining = event.remaining
               if (event.globalRemaining !== undefined) this.globalRemaining = event.globalRemaining
@@ -566,7 +569,9 @@ export default {
     },
     openInFixer () {
       fetch(AI_BACKEND + '/ai/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'fix_click' }) }).catch(() => {})
-      this.$router.push({ path: '/venpa-fixer', query: { verse: this.finalVerse } })
+      const query = { verse: this.finalVerse }
+      if (this.logId) query.log_id = this.logId
+      this.$router.push({ path: '/venpa-fixer', query })
     }
   }
 }

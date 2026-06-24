@@ -3,7 +3,7 @@ const express = require('express')
 const cors = require('cors')
 const { runLoop, callParser, parseXML } = require('./geminiLoop')
 const { getSuggestions, getRunSuggestions } = require('./errorFeedback')
-const { saveComposition, getComposition, getSourceCounts, listCompositions, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals } = require('./db')
+const { saveComposition, getComposition, getSourceCounts, listCompositions, saveGenerationLog, updateManualFix, listGenerationLog, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals } = require('./db')
 
 const app = express()
 app.use(cors())
@@ -75,6 +75,24 @@ app.post('/venpa/suggest', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
+})
+
+app.patch('/generation-log/:id', (req, res) => {
+  const { manuallyFixedVerse } = req.body
+  if (!manuallyFixedVerse) return res.status(400).json({ error: 'manuallyFixedVerse required' })
+  updateManualFix(parseInt(req.params.id), manuallyFixedVerse)
+  res.json({ ok: true })
+})
+
+app.get('/admin/generation-log', (req, res) => {
+  const token = req.headers['x-dev-token'] || req.query.token
+  if (!process.env.DEV_TOKEN || token !== process.env.DEV_TOKEN) {
+    return res.status(401).json({ error: 'unauthorized' })
+  }
+  const page = Math.max(1, parseInt(req.query.page) || 1)
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20))
+  const { rows, total } = listGenerationLog(page, limit)
+  res.json({ logs: rows, total, page, pages: Math.ceil(total / limit) })
 })
 
 app.post('/ai/event', (req, res) => {
@@ -192,6 +210,20 @@ app.post('/ai/stream', async (req, res) => {
         success: result.success,
         tokens: result.tokens
       })
+      const logId = saveGenerationLog({
+        mode,
+        verseType,
+        prompt: mode === 'generate' ? topic : verse,
+        attempts: result.iterations?.length || 1,
+        success: result.success,
+        finalVerse: result.verse,
+        iterationsJson: JSON.stringify((result.iterations || []).map(i => ({ attempt: i.attempt, verse: i.verse, errors: i.errors }))),
+        sandhi: result.sandhi,
+        literal: result.literal,
+        explanation: result.explanation,
+        cost: result.tokens.cost
+      })
+      await emit({ type: 'log_id', id: logId })
       await emit({ type: 'tokens', ...result.tokens })
     }
     await emit({ type: 'usage', remaining, globalRemaining })

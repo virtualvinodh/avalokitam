@@ -47,6 +47,7 @@ export const ShareMixin = {
           this._fallbackCopy(url)
           notify()
         }
+        if (this.afterSave) this.afterSave(verse)
       } catch (e) {
         this.$q.notify({ message: 'சேமிக்க இயலவில்லை. மீண்டும் முயற்சிக்கவும்.', color: 'red-7', position: 'top' })
       } finally {

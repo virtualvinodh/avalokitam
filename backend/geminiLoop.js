@@ -137,6 +137,7 @@ async function parseXML (xmlString) {
 
 async function sendDone (send, result, totals, context = null) {
   await send({ type: 'done', ...result })
+  let sandhi = null, literal = null, explanation = null
   if (result.success) {
     try {
       const { text: raw, usage } = await callGemini(buildSandhiAndExplainPrompt(result.verse, context), 'minimal', 'explain')
@@ -145,18 +146,19 @@ async function sendDone (send, result, totals, context = null) {
       const literalIdx = raw.indexOf('LITERAL:')
       const meaningIdx = raw.indexOf('MEANING:')
       if (sandhiIdx !== -1 && literalIdx !== -1 && meaningIdx !== -1) {
-        const sandhi = raw.slice(sandhiIdx + 'SANDHI_SPLIT:'.length, literalIdx).trim()
-        const literal = raw.slice(literalIdx + 'LITERAL:'.length, meaningIdx).trim()
-        const meaning = raw.slice(meaningIdx + 'MEANING:'.length).trim()
+        sandhi = raw.slice(sandhiIdx + 'SANDHI_SPLIT:'.length, literalIdx).trim()
+        literal = raw.slice(literalIdx + 'LITERAL:'.length, meaningIdx).trim()
+        explanation = raw.slice(meaningIdx + 'MEANING:'.length).trim()
         if (sandhi) await send({ type: 'sandhi', text: sandhi })
         if (literal) await send({ type: 'literal', text: literal })
-        if (meaning) await send({ type: 'explanation', text: meaning })
+        if (explanation) await send({ type: 'explanation', text: explanation })
       } else if (sandhiIdx !== -1 && meaningIdx !== -1) {
-        const sandhi = raw.slice(sandhiIdx + 'SANDHI_SPLIT:'.length, meaningIdx).trim()
-        const meaning = raw.slice(meaningIdx + 'MEANING:'.length).trim()
+        sandhi = raw.slice(sandhiIdx + 'SANDHI_SPLIT:'.length, meaningIdx).trim()
+        explanation = raw.slice(meaningIdx + 'MEANING:'.length).trim()
         if (sandhi) await send({ type: 'sandhi', text: sandhi })
-        if (meaning) await send({ type: 'explanation', text: meaning })
+        if (explanation) await send({ type: 'explanation', text: explanation })
       } else if (raw) {
+        explanation = raw
         await send({ type: 'explanation', text: raw })
       }
     } catch (_) {}
@@ -168,7 +170,7 @@ async function sendDone (send, result, totals, context = null) {
     cost: tokenCost(totals)
   }
   console.log(`[generation] in:${tokens.input} out:${tokens.output} think:${tokens.thinking} → $${tokens.cost.toFixed(4)}`)
-  return { ...result, tokens }
+  return { ...result, tokens, sandhi, literal, explanation }
 }
 
 // emit is an optional async callback(event) for streaming
