@@ -30,9 +30,17 @@ db.exec(`
     literal TEXT,
     explanation TEXT,
     cost REAL,
-    manually_fixed_verse TEXT
+    manually_fixed_verse TEXT,
+    model TEXT,
+    thinking_level TEXT,
+    final_metre TEXT,
+    input_error_count INTEGER
   )
 `)
+try { db.exec('ALTER TABLE generation_log ADD COLUMN model TEXT') } catch (_) {}
+try { db.exec('ALTER TABLE generation_log ADD COLUMN thinking_level TEXT') } catch (_) {}
+try { db.exec('ALTER TABLE generation_log ADD COLUMN final_metre TEXT') } catch (_) {}
+try { db.exec('ALTER TABLE generation_log ADD COLUMN input_error_count INTEGER') } catch (_) {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS daily_stats (
@@ -68,11 +76,11 @@ function getComposition (id) {
   return db.prepare('SELECT * FROM compositions WHERE id = ?').get(id) || null
 }
 
-function saveGenerationLog ({ mode, verseType, prompt, attempts, success, finalVerse, iterationsJson, sandhi, literal, explanation, cost }) {
+function saveGenerationLog ({ mode, verseType, prompt, attempts, success, finalVerse, iterationsJson, sandhi, literal, explanation, cost, model, thinkingLevel, finalMetre, inputErrorCount }) {
   const result = db.prepare(`
-    INSERT INTO generation_log (created_at, mode, verse_type, prompt, attempts, success, final_verse, iterations_json, sandhi, literal, explanation, cost)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(Date.now(), mode, verseType, prompt, attempts, success ? 1 : 0, finalVerse, iterationsJson, sandhi || null, literal || null, explanation || null, cost || 0)
+    INSERT INTO generation_log (created_at, mode, verse_type, prompt, attempts, success, final_verse, iterations_json, sandhi, literal, explanation, cost, model, thinking_level, final_metre, input_error_count)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(Date.now(), mode, verseType, prompt, attempts, success ? 1 : 0, finalVerse, iterationsJson, sandhi || null, literal || null, explanation || null, cost || 0, model || null, thinkingLevel || null, finalMetre || null, inputErrorCount ?? null)
   return result.lastInsertRowid
 }
 

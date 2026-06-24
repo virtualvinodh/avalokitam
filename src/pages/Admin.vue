@@ -72,6 +72,7 @@
             </q-tr>
             <q-tr v-show="props.expand" :props="props">
               <q-td colspan="100%" class="q-pa-md bg-grey-1">
+                <div class="q-mb-xs text-caption text-grey-6">{{ props.row.model }} · {{ props.row.thinking_level }}<span v-if="props.row.input_error_count != null"> · உள்ளீட்டு பிழைகள்: {{ props.row.input_error_count }}</span></div>
                 <div class="q-mb-xs"><strong>உரைக்கோள்:</strong> <span class="tamil">{{ props.row.prompt }}</span></div>
                 <div v-if="props.row.final_verse" class="q-mb-xs"><strong>இறுதிப்பா:</strong><div class="tamil" style="white-space:pre-line">{{ props.row.final_verse }}</div></div>
                 <div v-if="props.row.sandhi" class="q-mb-xs"><strong>சந்தி:</strong> <span class="tamil">{{ props.row.sandhi }}</span></div>
@@ -83,6 +84,7 @@
                   <div v-for="(iter, i) in parseIterations(props.row.iterations_json)" :key="i" class="q-mt-xs q-pl-sm" style="border-left:2px solid #ccc">
                     <div class="text-caption text-grey-6">{{ i + 1 }}. {{ iter.errors && iter.errors.length ? '✗ ' + iter.errors.map(e => e.rule).join(', ') : '✓' }}</div>
                     <div class="tamil" style="white-space:pre-line;font-size:0.8em">{{ iter.verse }}</div>
+                    <div v-if="iter.feedback" class="text-caption text-grey-5 q-mt-xs" style="white-space:pre-wrap">{{ iter.feedback }}</div>
                   </div>
                 </div>
               </q-td>
@@ -190,7 +192,9 @@ export default {
         { name: 'prompt', label: 'உரைக்கோள்', field: row => (row.prompt || '').slice(0, 40) + ((row.prompt || '').length > 40 ? '…' : ''), align: 'left' },
         { name: 'attempts', label: 'முயற்சி', field: 'attempts', align: 'right', style: 'width:70px' },
         { name: 'success', label: 'நிலை', field: row => row.success ? '✓' : '✗', align: 'center', style: 'width:60px' },
+        { name: 'final_metre', label: 'யாப்பு', field: 'final_metre', align: 'left', style: 'width:100px' },
         { name: 'manually_fixed', label: 'திருத்தம்', field: row => row.manually_fixed_verse ? '✓' : '', align: 'center', style: 'width:70px' },
+        { name: 'model', label: 'மாதிரி', field: row => (row.model || '').replace('gemini-', ''), align: 'left', style: 'width:90px' },
         { name: 'cost', label: 'செலவு', field: row => '$' + (row.cost || 0).toFixed(4), align: 'right', style: 'width:80px' }
       ],
 

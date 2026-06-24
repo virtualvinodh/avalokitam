@@ -170,7 +170,7 @@ async function sendDone (send, result, totals, context = null) {
     cost: tokenCost(totals)
   }
   console.log(`[generation] in:${tokens.input} out:${tokens.output} think:${tokens.thinking} → $${tokens.cost.toFixed(4)}`)
-  return { ...result, tokens, sandhi, literal, explanation }
+  return { ...result, tokens, sandhi, literal, explanation, inputErrorCount: result.inputErrorCount ?? null }
 }
 
 // emit is an optional async callback(event) for streaming
@@ -189,6 +189,8 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
   const iterations = []
   let currentVerse = null
   let prompt
+  let currentFeedback = null
+  let inputErrorCount = null
 
   const originalContext = mode === 'generate'
     ? `ORIGINAL REQUEST: compose a ${verseType} about "${topic}"`
@@ -210,14 +212,18 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
       const hasErrors = initialParsed.violations.length > 0 ||
         initialParsed.lines.some(l => !l.lineOk || l.feet.some(f => !f.footOk || (f.bond && !f.bondOk)))
 
+      inputErrorCount = initialParsed.violations.length +
+        initialParsed.lines.reduce((n, l) => n + (!l.lineOk ? 1 : 0) + l.feet.filter(f => !f.footOk || (f.bond && !f.bondOk)).length, 0)
+
       if (!hasErrors) {
         // Already valid — nothing to fix
         const iter = { attempt: 1, verse, metreType: initialParsed.metreDetected, errors: [] }
         await send({ type: 'iteration', ...iter })
-        return done({ success: true, verse, metreType: initialParsed.metreDetected, iterations: [iter] })
+        return done({ success: true, verse, metreType: initialParsed.metreDetected, iterations: [iter], inputErrorCount: 0 })
       }
 
-      prompt = buildFixPrompt(verse, verseType, formatFeedback(initialParsed))
+      currentFeedback = formatFeedback(initialParsed)
+      prompt = buildFixPrompt(verse, verseType, currentFeedback)
     } else {
       prompt = buildFixPrompt(verse, verseType)
     }
@@ -260,12 +266,12 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
     }
 
     const { metreDetected: metreType, violations: errors } = parsed
-    const iter = { attempt, verse: currentVerse, metreType, errors, xml: xmlResult }
+    const iter = { attempt, verse: currentVerse, metreType, errors, xml: xmlResult, feedback: currentFeedback }
     iterations.push(iter)
     await send({ type: 'iteration', ...iter })
 
     if (errors.length === 0) {
-      return done({ success: true, verse: currentVerse, metreType, iterations })
+      return done({ success: true, verse: currentVerse, metreType, iterations, inputErrorCount })
     }
 
     if (POLISH_ENABLED && errors.length === 0) {
@@ -336,7 +342,8 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
     }
 
     if (attempt < MAX_ITERATIONS) {
-      prompt = buildFeedbackPrompt(currentVerse, verseType, formatFeedback(parsed), attempt, originalContext)
+      currentFeedback = formatFeedback(parsed)
+      prompt = buildFeedbackPrompt(currentVerse, verseType, currentFeedback, attempt, originalContext)
     }
   }
 
@@ -346,6 +353,7 @@ async function runLoop ({ mode, verse, topic, verseType, lang, emit }) {
     verse: last.verse,
     metreType: last.metreType || '',
     iterations,
+    inputErrorCount,
     message: `Could not produce a fully valid verse after ${MAX_ITERATIONS} attempts. Best result shown.`
   }
   return done(result)

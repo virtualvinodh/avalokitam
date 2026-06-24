@@ -217,11 +217,15 @@ app.post('/ai/stream', async (req, res) => {
         attempts: result.iterations?.length || 1,
         success: result.success,
         finalVerse: result.verse,
-        iterationsJson: JSON.stringify((result.iterations || []).map(i => ({ attempt: i.attempt, verse: i.verse, errors: i.errors }))),
+        iterationsJson: JSON.stringify((result.iterations || []).map(i => ({ attempt: i.attempt, verse: i.verse, errors: i.errors, feedback: i.feedback || null }))),
         sandhi: result.sandhi,
         literal: result.literal,
         explanation: result.explanation,
-        cost: result.tokens.cost
+        cost: result.tokens.cost,
+        model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+        thinkingLevel: process.env.GEMINI_THINKING_LEVEL || 'minimal',
+        finalMetre: result.metreType || null,
+        inputErrorCount: result.inputErrorCount ?? null
       })
       await emit({ type: 'log_id', id: logId })
       await emit({ type: 'tokens', ...result.tokens })
