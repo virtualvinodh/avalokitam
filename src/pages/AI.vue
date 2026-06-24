@@ -6,7 +6,10 @@
       <div :style="$q.screen.lt.md ? '' : 'width:35%;min-width:280px;max-width:420px'">
         <div class="q-ma-md">
 
-          <div class="text-h6 tamil q-mb-sm" style="color:#555">வெண்பா AI</div>
+          <q-tabs dense align="left" active-color="grey-9" indicator-color="grey-9" class="q-mb-md">
+            <q-tab name="create" label="இயற்றுக" @click="$router.push('/ai')" :class="{ 'text-grey-9': true }" />
+            <q-tab name="gallery" label="தொகுப்பு" @click="$router.push('/gallery')" class="text-grey-6" />
+          </q-tabs>
 
           <!-- Global daily availability banner -->
           <q-banner
@@ -117,6 +120,7 @@
               <span class="tamil">AI செயல்படுகிறது...</span>
             </template>
           </q-btn>
+          <div class="text-caption text-grey-5 text-center tamil q-mt-xs">உங்கள் உரைக்கோளும் பாவும் மேம்பாட்டிற்காக பதிவு செய்யப்படும்.</div>
 
           <!-- Token stats (visible only with ?dev=1) -->
           <q-expansion-item
@@ -236,6 +240,9 @@
                     <q-btn flat dense dark icon="find_in_page" label="ஆராய்க" class="tamil text-grey-4" size="sm" @click="openInAnalyzer" />
                     <q-btn flat dense dark icon="refresh" label="மீண்டும்" class="tamil text-grey-4" size="sm" @click="run" />
                   </div>
+                  <div class="q-px-sm q-pb-sm">
+                    <q-checkbox v-model="compositionIsPublic" dark dense size="xs" color="grey-4" label="பொது தொகுப்பில் சேர்க்க" class="tamil text-grey-4" style="font-size:0.8em" />
+                  </div>
                 </div>
                 <!-- 2. Sandhi split -->
                 <div v-if="sandhi" class="q-mb-sm">
@@ -310,6 +317,7 @@
                 <q-btn flat dense icon="share" label="பகிர்" class="tamil" @click="shareInstagram(finalVerse)" />
                 <q-btn flat dense icon="build" label="சுயமாக திருத்துக" class="tamil" @click="openInFixer" />
                 <q-btn flat dense icon="refresh" label="மீண்டும்" class="tamil" @click="run" />
+                <q-checkbox v-model="compositionIsPublic" dense size="xs" label="பொது தொகுப்பில் சேர்க்க" class="tamil" style="font-size:0.8em" />
               </template>
             </q-banner>
 
@@ -377,6 +385,9 @@ export default {
   data () {
     return {
       compositionSource: 'ai',
+      compositionIsPublic: true,
+      compositionPrompt: null,
+      compositionLogId: null,
       logId: null,
       mode: 'generate',
       verseType: 'venpaa',
@@ -449,6 +460,7 @@ export default {
       if (this.loading || this.remaining === 0) return
       this.reset()
       this.loading = true
+      this.compositionPrompt = this.mode === 'generate' ? (this.topic || null) : null
 
       const detectedType = this.mode === 'fix'
         ? (this.inputVerse || '').split('\n').filter(l => l.trim()).length === 2 ? 'kuralpaa' : 'venpaa'
@@ -536,6 +548,7 @@ export default {
               this.loadingExtra = false
             } else if (event.type === 'log_id') {
               this.logId = event.id
+              this.compositionLogId = event.id
             } else if (event.type === 'usage') {
               this.remaining = event.remaining
               if (event.globalRemaining !== undefined) this.globalRemaining = event.globalRemaining

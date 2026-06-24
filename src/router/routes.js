@@ -75,6 +75,13 @@ const routes = [
     ]
   },
   {
+    path: '/gallery',
+    component: () => import('layouts/MyLayout.vue'),
+    children: [
+      { path: '', component: () => import('pages/Gallery.vue') }
+    ]
+  },
+  {
     path: '/admin',
     component: () => import('layouts/MyLayout.vue'),
     children: [

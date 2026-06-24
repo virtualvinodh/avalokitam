@@ -10,10 +10,16 @@ db.exec(`
     verse TEXT NOT NULL,
     metre TEXT,
     source TEXT,
+    is_public INTEGER DEFAULT 0,
+    prompt TEXT,
+    log_id INTEGER,
     created_at INTEGER NOT NULL
   )
 `)
 try { db.exec('ALTER TABLE compositions ADD COLUMN source TEXT') } catch (_) {}
+try { db.exec('ALTER TABLE compositions ADD COLUMN is_public INTEGER DEFAULT 0') } catch (_) {}
+try { db.exec('ALTER TABLE compositions ADD COLUMN prompt TEXT') } catch (_) {}
+try { db.exec('ALTER TABLE compositions ADD COLUMN log_id INTEGER') } catch (_) {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS generation_log (
@@ -62,14 +68,37 @@ function randomId () {
   return Math.random().toString(36).slice(2, 8)
 }
 
-function saveComposition (verse, metre, source) {
+function saveComposition (verse, metre, source, isPublic, prompt, logId) {
   let id = randomId()
   while (db.prepare('SELECT 1 FROM compositions WHERE id = ?').get(id)) {
     id = randomId()
   }
-  db.prepare('INSERT INTO compositions (id, verse, metre, source, created_at) VALUES (?, ?, ?, ?, ?)')
-    .run(id, verse, metre || null, source || null, Date.now())
+  db.prepare('INSERT INTO compositions (id, verse, metre, source, is_public, prompt, log_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(id, verse, metre || null, source || null, isPublic ? 1 : 0, prompt || null, logId || null, Date.now())
   return id
+}
+
+function getRandomPublicComposition () {
+  return db.prepare(`
+    SELECT c.*, g.sandhi, g.literal, g.explanation
+    FROM compositions c
+    LEFT JOIN generation_log g ON c.log_id = g.id
+    WHERE c.is_public = 1 AND c.source = 'ai'
+    ORDER BY RANDOM() LIMIT 1
+  `).get() || null
+}
+
+function getPublicCompositions (page, limit) {
+  const offset = (page - 1) * limit
+  const rows = db.prepare(`
+    SELECT c.*, g.sandhi, g.literal, g.explanation
+    FROM compositions c
+    LEFT JOIN generation_log g ON c.log_id = g.id
+    WHERE c.is_public = 1 AND c.source = 'ai'
+    ORDER BY c.created_at DESC LIMIT ? OFFSET ?
+  `).all(limit, offset)
+  const { total } = db.prepare(`SELECT COUNT(*) as total FROM compositions WHERE is_public = 1 AND source = 'ai'`).get()
+  return { rows, total }
 }
 
 function getComposition (id) {
@@ -171,4 +200,4 @@ function getStatsTotals () {
   `).get()
 }
 
-module.exports = { saveComposition, getComposition, getSourceCounts, listCompositions, saveGenerationLog, updateManualFix, listGenerationLog, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals }
+module.exports = { saveComposition, getComposition, getPublicCompositions, getRandomPublicComposition, getSourceCounts, listCompositions, saveGenerationLog, updateManualFix, listGenerationLog, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals }

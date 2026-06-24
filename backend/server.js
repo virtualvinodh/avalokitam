@@ -3,7 +3,7 @@ const express = require('express')
 const cors = require('cors')
 const { runLoop, callParser, parseXML } = require('./geminiLoop')
 const { getSuggestions, getRunSuggestions } = require('./errorFeedback')
-const { saveComposition, getComposition, getSourceCounts, listCompositions, saveGenerationLog, updateManualFix, listGenerationLog, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals } = require('./db')
+const { saveComposition, getComposition, getPublicCompositions, getRandomPublicComposition, getSourceCounts, listCompositions, saveGenerationLog, updateManualFix, listGenerationLog, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals } = require('./db')
 
 const app = express()
 app.use(cors())
@@ -121,10 +121,23 @@ app.get('/admin/compositions', (req, res) => {
   res.json({ compositions: rows, total, page, pages: Math.ceil(total / limit), limit, sourceCounts })
 })
 
+app.get('/compositions/public/random', (req, res) => {
+  const comp = getRandomPublicComposition()
+  if (!comp) return res.status(404).json({ error: 'none found' })
+  res.json(comp)
+})
+
+app.get('/compositions/public', (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1)
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20))
+  const { rows, total } = getPublicCompositions(page, limit)
+  res.json({ compositions: rows, total, page, pages: Math.ceil(total / limit) })
+})
+
 app.post('/compositions', (req, res) => {
-  const { verse, metre, source } = req.body
+  const { verse, metre, source, is_public, prompt, log_id } = req.body
   if (!verse || !verse.trim()) return res.status(400).json({ error: 'verse required' })
-  const id = saveComposition(verse.trim(), metre, source)
+  const id = saveComposition(verse.trim(), metre, source, is_public, prompt, log_id)
   res.json({ id })
 })
 

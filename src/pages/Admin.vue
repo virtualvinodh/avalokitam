@@ -74,7 +74,7 @@
               <q-td colspan="100%" class="q-pa-md bg-grey-1">
                 <div class="q-mb-xs text-caption text-grey-6">{{ props.row.model }} · {{ props.row.thinking_level }}<span v-if="props.row.input_error_count != null"> · உள்ளீட்டு பிழைகள்: {{ props.row.input_error_count }}</span></div>
                 <div class="q-mb-xs"><strong>உரைக்கோள்:</strong> <span class="tamil">{{ props.row.prompt }}</span></div>
-                <div v-if="props.row.final_verse" class="q-mb-xs"><strong>இறுதிப்பா:</strong><div class="tamil" style="white-space:pre-line">{{ props.row.final_verse }}</div></div>
+                <div v-if="props.row.final_verse" class="q-mb-xs"><strong>இறுதிப்பா:</strong><span v-if="props.row.final_metre" class="text-caption text-grey-5 q-ml-sm">{{ props.row.final_metre }}</span><div class="tamil" style="white-space:pre-line">{{ props.row.final_verse }}</div></div>
                 <div v-if="props.row.sandhi" class="q-mb-xs"><strong>சந்தி:</strong> <span class="tamil">{{ props.row.sandhi }}</span></div>
                 <div v-if="props.row.literal" class="q-mb-xs"><strong>தெளிவுரை:</strong> <span class="tamil">{{ props.row.literal }}</span></div>
                 <div v-if="props.row.explanation" class="q-mb-xs"><strong>பொழிப்புரை:</strong> <span class="tamil">{{ props.row.explanation }}</span></div>
@@ -188,14 +188,9 @@ export default {
       logCols: [
         { name: 'created_at', label: 'தேதி', field: row => new Date(row.created_at).toLocaleString('ta-IN'), align: 'left', style: 'width:140px' },
         { name: 'mode', label: 'வகை', field: 'mode', align: 'left', style: 'width:80px' },
-        { name: 'verse_type', label: 'பா', field: 'verse_type', align: 'left', style: 'width:80px' },
-        { name: 'prompt', label: 'உரைக்கோள்', field: row => (row.prompt || '').slice(0, 40) + ((row.prompt || '').length > 40 ? '…' : ''), align: 'left' },
+        { name: 'prompt', label: 'உரைக்கோள்', field: row => (row.prompt || '').slice(0, 50) + ((row.prompt || '').length > 50 ? '…' : ''), align: 'left' },
         { name: 'attempts', label: 'முயற்சி', field: 'attempts', align: 'right', style: 'width:70px' },
-        { name: 'success', label: 'நிலை', field: row => row.success ? '✓' : '✗', align: 'center', style: 'width:60px' },
-        { name: 'final_metre', label: 'யாப்பு', field: 'final_metre', align: 'left', style: 'width:100px' },
-        { name: 'manually_fixed', label: 'திருத்தம்', field: row => row.manually_fixed_verse ? '✓' : '', align: 'center', style: 'width:70px' },
-        { name: 'model', label: 'மாதிரி', field: row => (row.model || '').replace('gemini-', ''), align: 'left', style: 'width:90px' },
-        { name: 'cost', label: 'செலவு', field: row => '$' + (row.cost || 0).toFixed(4), align: 'right', style: 'width:80px' }
+        { name: 'success', label: 'நிலை', field: row => row.success ? '✓' : '✗', align: 'center', style: 'width:60px' }
       ],
 
       loadingStats: false,
