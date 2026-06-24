@@ -236,6 +236,7 @@ export default {
   },
   data () {
     return {
+      compositionSource: 'analyzer',
       showAIBanner: localStorage.getItem('ai_banner_dismissed') !== '1',
       saving: false,
       text: '',

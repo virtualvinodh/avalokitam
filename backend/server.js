@@ -3,7 +3,7 @@ const express = require('express')
 const cors = require('cors')
 const { runLoop, callParser, parseXML } = require('./geminiLoop')
 const { getSuggestions, getRunSuggestions } = require('./errorFeedback')
-const { saveComposition, getComposition, listCompositions, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals } = require('./db')
+const { saveComposition, getComposition, getSourceCounts, listCompositions, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals } = require('./db')
 
 const app = express()
 app.use(cors())
@@ -99,13 +99,14 @@ app.get('/admin/compositions', (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1)
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50))
   const { rows, total } = listCompositions(page, limit)
-  res.json({ compositions: rows, total, page, pages: Math.ceil(total / limit), limit })
+  const sourceCounts = getSourceCounts()
+  res.json({ compositions: rows, total, page, pages: Math.ceil(total / limit), limit, sourceCounts })
 })
 
 app.post('/compositions', (req, res) => {
-  const { verse, metre } = req.body
+  const { verse, metre, source } = req.body
   if (!verse || !verse.trim()) return res.status(400).json({ error: 'verse required' })
-  const id = saveComposition(verse.trim(), metre)
+  const id = saveComposition(verse.trim(), metre, source)
   res.json({ id })
 })
 

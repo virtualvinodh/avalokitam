@@ -525,6 +525,7 @@ export default {
   },
   data () {
     return {
+      compositionSource: 'fixer',
       step: 1,
       saving: false,
       inputMode: 'fix',

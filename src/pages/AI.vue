@@ -107,7 +107,7 @@
             :label="mode === 'fix' ? 'திருத்துக' : (verseType === 'kuralpaa' ? 'குறள் வெண்பா இயற்றுக' : 'வெண்பா இயற்றுக')"
             :icon="mode === 'generate' ? 'auto_awesome' : 'build'"
             :loading="loading"
-            :disable="loading || remaining === 0 || (mode === 'generate' ? !topic.trim() : !inputVerse.trim())"
+            :disable="loading || remaining === 0 || (mode === 'generate' ? !(topic || '').trim() : !(inputVerse || '').trim())"
             class="tamil full-width q-mb-md"
             size="md"
             @click="run"
@@ -376,6 +376,7 @@ export default {
   mixins: [LinkMixin, ShareMixin],
   data () {
     return {
+      compositionSource: 'ai',
       mode: 'generate',
       verseType: 'venpaa',
       topic: '',
@@ -448,9 +449,12 @@ export default {
       this.reset()
       this.loading = true
 
+      const detectedType = this.mode === 'fix'
+        ? (this.inputVerse || '').split('\n').filter(l => l.trim()).length === 2 ? 'kuralpaa' : 'venpaa'
+        : this.verseType
       const body = {
         mode: this.mode,
-        verseType: this.verseType,
+        verseType: detectedType,
         ...(this.mode === 'generate' ? { topic: this.topic } : { verse: this.inputVerse })
       }
 

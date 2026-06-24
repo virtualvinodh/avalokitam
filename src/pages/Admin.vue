@@ -20,8 +20,11 @@
 
       <!-- Verses tab -->
       <div v-if="tab === 'verses'">
-        <div class="row items-center q-mb-sm">
-          <div class="text-subtitle1">சேமிக்கப்பட்ட பாக்கள் <q-chip dense color="grey-7" text-color="white">{{ total }}</q-chip></div>
+        <div class="row items-center q-gutter-sm q-mb-sm">
+          <q-chip dense color="grey-8" text-color="white">மொத்தம் {{ total }}</q-chip>
+          <q-chip v-for="s in sourceCounts" :key="s.source" dense outline color="grey-7">
+            {{ s.source }}: {{ s.count }}
+          </q-chip>
         </div>
         <q-table
           :data="compositions"
@@ -124,11 +127,13 @@ export default {
 
       loadingVerses: false,
       compositions: [],
+      sourceCounts: [],
       total: 0,
       versePage: 1,
       versePages: 1,
       verseCols: [
         { name: 'id', label: 'இணைப்பு', field: 'id', align: 'left', style: 'width:80px' },
+        { name: 'source', label: 'மூலம்', field: 'source', align: 'left', style: 'width:90px' },
         { name: 'metre', label: 'யாப்பு', field: 'metre', align: 'left', style: 'width:140px' },
         { name: 'verse', label: 'பா', field: 'verse', align: 'left' },
         { name: 'created_at', label: 'தேதி', field: 'created_at', align: 'left', style: 'width:160px' }
@@ -207,6 +212,7 @@ export default {
         this.compositions = data.compositions
         this.total = data.total
         this.versePages = data.pages
+        this.sourceCounts = data.sourceCounts.rows || []
       } finally {
         this.loadingVerses = false
       }

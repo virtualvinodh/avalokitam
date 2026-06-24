@@ -19,7 +19,7 @@ export const ShareMixin = {
       const resp = await fetch(AI_BACKEND + '/compositions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ verse: verse.trim(), metre })
+        body: JSON.stringify({ verse: verse.trim(), metre, source: this.compositionSource || null })
       })
       const { id } = await resp.json()
       this._poemId = id

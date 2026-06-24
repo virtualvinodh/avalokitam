@@ -79,6 +79,7 @@ export default {
   components: { ScansionDisplay, LetterDisplay, LinkageDisplay, LineDisplay, ScansionAll },
   data () {
     return {
+      compositionSource: 'poem',
       loading: true,
       error: false,
       verse: '',

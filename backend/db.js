@@ -9,9 +9,11 @@ db.exec(`
     id TEXT PRIMARY KEY,
     verse TEXT NOT NULL,
     metre TEXT,
+    source TEXT,
     created_at INTEGER NOT NULL
   )
 `)
+try { db.exec('ALTER TABLE compositions ADD COLUMN source TEXT') } catch (_) {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS daily_stats (
@@ -33,19 +35,27 @@ function randomId () {
   return Math.random().toString(36).slice(2, 8)
 }
 
-function saveComposition (verse, metre) {
+function saveComposition (verse, metre, source) {
   let id = randomId()
-  // retry on collision (astronomically rare but safe)
   while (db.prepare('SELECT 1 FROM compositions WHERE id = ?').get(id)) {
     id = randomId()
   }
-  db.prepare('INSERT INTO compositions (id, verse, metre, created_at) VALUES (?, ?, ?, ?)')
-    .run(id, verse, metre || null, Date.now())
+  db.prepare('INSERT INTO compositions (id, verse, metre, source, created_at) VALUES (?, ?, ?, ?, ?)')
+    .run(id, verse, metre || null, source || null, Date.now())
   return id
 }
 
 function getComposition (id) {
   return db.prepare('SELECT * FROM compositions WHERE id = ?').get(id) || null
+}
+
+function getSourceCounts () {
+  const rows = db.prepare(`
+    SELECT COALESCE(source, 'unknown') AS source, COUNT(*) AS count
+    FROM compositions GROUP BY source ORDER BY count DESC
+  `).all()
+  const total = rows.reduce((s, r) => s + r.count, 0)
+  return { rows, total }
 }
 
 function listCompositions (page, limit) {
@@ -115,4 +125,4 @@ function getStatsTotals () {
   `).get()
 }
 
-module.exports = { saveComposition, getComposition, listCompositions, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals }
+module.exports = { saveComposition, getComposition, getSourceCounts, listCompositions, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals }
