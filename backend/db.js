@@ -118,8 +118,8 @@ function saveGenerationLog ({ mode, verseType, prompt, attempts, success, finalV
   return result.lastInsertRowid
 }
 
-function updateManualFix (id, verse) {
-  db.prepare('UPDATE generation_log SET manually_fixed_verse = ? WHERE id = ?').run(verse, id)
+function updateManualFix (id, verse, finalMetre) {
+  db.prepare('UPDATE generation_log SET manually_fixed_verse = ?, final_metre = COALESCE(?, final_metre) WHERE id = ?').run(verse, finalMetre, id)
 }
 
 function setCompositionPublic (id, isPublic) {

@@ -89,9 +89,9 @@ app.patch('/compositions/:id', (req, res) => {
 })
 
 app.patch('/generation-log/:id', (req, res) => {
-  const { manuallyFixedVerse } = req.body
+  const { manuallyFixedVerse, finalMetre } = req.body
   if (!manuallyFixedVerse) return res.status(400).json({ error: 'manuallyFixedVerse required' })
-  updateManualFix(parseInt(req.params.id), manuallyFixedVerse)
+  updateManualFix(parseInt(req.params.id), manuallyFixedVerse, finalMetre || null)
   res.json({ ok: true })
 })
 

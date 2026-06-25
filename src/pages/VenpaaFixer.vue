@@ -703,7 +703,7 @@ export default {
       fetch(AI_BACKEND + '/generation-log/' + this.logId, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ manuallyFixedVerse: verse })
+        body: JSON.stringify({ manuallyFixedVerse: verse, finalMetre: this.detectedMetre || null })
       }).catch(() => {})
     },
     wordAt (li, fi) {
