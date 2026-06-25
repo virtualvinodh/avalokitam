@@ -80,7 +80,7 @@ function saveComposition (verse, metre, source, isPublic, prompt, logId) {
 
 function getRandomPublicComposition () {
   return db.prepare(`
-    SELECT c.*, g.sandhi, g.literal, g.explanation
+    SELECT c.*, COALESCE(c.prompt, g.prompt) AS prompt, g.sandhi, g.literal, g.explanation
     FROM compositions c
     LEFT JOIN generation_log g ON c.log_id = g.id
     WHERE c.is_public = 1 AND (c.source = 'ai' OR (c.source = 'fixer' AND c.log_id IS NOT NULL))
@@ -91,7 +91,7 @@ function getRandomPublicComposition () {
 function getPublicCompositions (page, limit) {
   const offset = (page - 1) * limit
   const rows = db.prepare(`
-    SELECT c.*, g.sandhi, g.literal, g.explanation
+    SELECT c.*, COALESCE(c.prompt, g.prompt) AS prompt, g.sandhi, g.literal, g.explanation
     FROM compositions c
     LEFT JOIN generation_log g ON c.log_id = g.id
     WHERE c.is_public = 1 AND (c.source = 'ai' OR (c.source = 'fixer' AND c.log_id IS NOT NULL))
@@ -209,4 +209,4 @@ function getStatsTotals () {
   `).get()
 }
 
-module.exports = { saveComposition, getComposition, getPublicCompositions, getRandomPublicComposition, getSourceCounts, setCompositionPublic, listCompositions, saveGenerationLog, updateManualFix, listGenerationLog, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals }
+module.exports = { saveComposition, getComposition, getPublicCompositions, getRandomPublicComposition, getSourceCounts, setCompositionPublic, listCompositions, saveGenerationLog, getGenerationLog, updateManualFix, listGenerationLog, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals }
