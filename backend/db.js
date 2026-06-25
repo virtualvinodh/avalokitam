@@ -209,4 +209,4 @@ function getStatsTotals () {
   `).get()
 }
 
-module.exports = { saveComposition, getComposition, getPublicCompositions, getRandomPublicComposition, getSourceCounts, setCompositionPublic, listCompositions, saveGenerationLog, getGenerationLog, updateManualFix, listGenerationLog, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals }
+module.exports = { saveComposition, getComposition, getPublicCompositions, getRandomPublicComposition, getSourceCounts, setCompositionPublic, listCompositions, saveGenerationLog, updateManualFix, listGenerationLog, recordDailyStat, incrementFixClick, getDailyStats, getStatsTotals }
